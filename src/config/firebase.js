@@ -26,4 +26,4 @@ const db = getFirestore(app);
 const analytics = getAnalytics(app);
 
 // Exporte os serviços para usar em outros arquivos
-export { auth, db };
+export { app, auth, db }; // <-- Corrigido aqui

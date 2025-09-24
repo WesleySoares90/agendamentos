@@ -3,6 +3,7 @@ import { Send, Eye, Edit } from 'lucide-react';
 import { SERVICES, TIME_SLOTS } from '../utils/constants';
 import { useAppointments } from '../hooks/useAppointments';
 import { appointmentService } from '../services/appointmentService';
+import DateSelector from './DateSelector'; // Importação do novo componente
 
 import bgImage from '../img/salao-ipanema-1024x576.jpg.webp';
 
@@ -169,7 +170,7 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
         if (!selectedService) return addBotMessage("Selecione um serviço válido.");
         setFormData(prev => ({ ...prev, service: input }));
         setCurrentStep('date');
-        setTimeout(() => addBotMessage(`Você selecionou: ${selectedService.name}. Escolha a data desejada.`), 500);
+        setTimeout(() => addBotMessage(`Você selecionou: ${selectedService.name}. Agora, escolha a data desejada.`), 500);
         break;
 
       case 'date':
@@ -398,19 +399,13 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
         {currentStep !== 'completed' && (
           <div className="p-4 border-t border-gray-700">
             {currentStep === 'date' ? (
-              <div className="flex space-x-2">
-                <input
-                  type="date"
-                  min={new Date().toISOString().split("T")[0]}
-                  value={formData.date || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  className="flex-1 px-4 py-3 bg-gray-800 border border-green-500 rounded-xl text-white"
+                <DateSelector
+                    onDateSelect={(date) => {
+                        setFormData(prev => ({ ...prev, date }));
+                        addUserMessage(date.split('-').reverse().join('/'));
+                        processUserInput(date);
+                    }}
                 />
-                <button
-                  onClick={() => { if(formData.date) { addUserMessage(formData.date); processUserInput(formData.date); } }}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
-                >Confirmar Data</button>
-              </div>
             ) : currentStep === 'phone' ? (
               <div className="flex space-x-2">
                 <input

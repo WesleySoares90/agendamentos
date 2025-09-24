@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { 
-  BarChart3, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  Edit, 
-  Filter, 
-  LogOut, 
+import React, { useState, useEffect } from 'react';
+import {
+  BarChart3,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Edit,
+  Filter,
+  LogOut,
   RefreshCw,
   User,
   Mail,
@@ -17,14 +17,22 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { SERVICES, APPOINTMENT_STATUS } from '../utils/constants';
 
-const AdminPanel = ({ 
-  appointments, 
-  loading, 
-  onUpdateStatus, 
-  onEditAppointment, 
-  onRefresh 
+const AdminPanel = ({
+  appointments,
+  loading,
+  onUpdateStatus,
+  onEditAppointment,
+  onRefresh
 }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+  const [updatingStatus, setUpdatingStatus] = useState({});
+  const [localAppointments, setLocalAppointments] = useState(appointments);
+
+  // Sincroniza localAppointments quando appointments do pai mudarem
+  useEffect(() => {
+    setLocalAppointments(appointments);
+  }, [appointments]);
 
   const handleLogout = async () => {
     try {
@@ -34,16 +42,57 @@ const AdminPanel = ({
     }
   };
 
-  const filteredAppointments = appointments.filter(apt => {
-    if (selectedFilter === 'all') return true;
-    return apt.status === selectedFilter;
+  const formatLocalDate = (dateString) => {
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleUpdateStatus = async (appointmentId, newStatus) => {
+    setUpdatingStatus(prev => ({ ...prev, [appointmentId]: true }));
+
+    try {
+      // Atualiza no servidor
+      await onUpdateStatus(appointmentId, newStatus);
+
+      // Atualiza localmente para refletir imediatamente
+      setLocalAppointments(prev =>
+        prev.map(apt =>
+          apt.id === appointmentId ? { ...apt, status: newStatus } : apt
+        )
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+    } finally {
+      setUpdatingStatus(prev => {
+        const updated = { ...prev };
+        delete updated[appointmentId];
+        return updated;
+      });
+    }
+  };
+
+  // Filtro em memória
+  const filteredAppointments = localAppointments.filter(apt => {
+    if (selectedFilter !== 'all' && apt.status !== selectedFilter) return false;
+
+    if (dateFilter.start) {
+      const start = new Date(dateFilter.start);
+      if (new Date(apt.date) < start) return false;
+    }
+
+    if (dateFilter.end) {
+      const end = new Date(dateFilter.end + 'T23:59:59');
+      if (new Date(apt.date) > end) return false;
+    }
+
+    return true;
   });
 
   const stats = {
-    total: appointments.length,
-    pending: appointments.filter(apt => apt.status === APPOINTMENT_STATUS.PENDING).length,
-    approved: appointments.filter(apt => apt.status === APPOINTMENT_STATUS.APPROVED).length,
-    cancelled: appointments.filter(apt => apt.status === APPOINTMENT_STATUS.CANCELLED).length
+    total: localAppointments.length,
+    pending: localAppointments.filter(apt => apt.status === APPOINTMENT_STATUS.PENDING).length,
+    approved: localAppointments.filter(apt => apt.status === APPOINTMENT_STATUS.APPROVED).length,
+    cancelled: localAppointments.filter(apt => apt.status === APPOINTMENT_STATUS.CANCELLED).length
   };
 
   return (
@@ -53,15 +102,19 @@ const AdminPanel = ({
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Painel Administrativo</h1>
           <div className="flex items-center space-x-4">
-            <button 
-              onClick={onRefresh}
+            <button
+              onClick={() => onRefresh({
+                status: selectedFilter !== 'all' ? selectedFilter : null,
+                startDate: dateFilter.start ? new Date(dateFilter.start) : null,
+                endDate: dateFilter.end ? new Date(dateFilter.end + "T23:59:59") : null
+              })}
               disabled={loading}
               className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               <RefreshCw className="h-4 w-4" />
               <span>{loading ? 'Carregando...' : 'Atualizar'}</span>
             </button>
-            <button 
+            <button
               onClick={handleLogout}
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
             >
@@ -115,18 +168,37 @@ const AdminPanel = ({
         </div>
 
         {/* Filtros */}
-        <div className="flex items-center space-x-4 mb-6">
-          <Filter className="h-5 w-5 text-gray-600" />
-          <select
-            value={selectedFilter}
-            onChange={(e) => setSelectedFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-48"
-          >
-            <option value="all">Todos os agendamentos</option>
-            <option value="pending">Pendentes</option>
-            <option value="approved">Aprovados</option>
-            <option value="cancelled">Cancelados</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-gray-600" />
+            <select
+              value={selectedFilter}
+              onChange={(e) => setSelectedFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-48"
+            >
+              <option value="all">Todos os agendamentos</option>
+              <option value="pending">Pendentes</option>
+              <option value="approved">Aprovados</option>
+              <option value="cancelled">Cancelados</option>
+            </select>
+          </div>
+
+          {/* Filtro por intervalo de datas */}
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={dateFilter.start}
+              onChange={(e) => setDateFilter(prev => ({ ...prev, start: e.target.value }))}
+              className="px-3 py-2 border border-gray-300 rounded-md"
+            />
+            <span>-</span>
+            <input
+              type="date"
+              value={dateFilter.end}
+              onChange={(e) => setDateFilter(prev => ({ ...prev, end: e.target.value }))}
+              className="px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
         </div>
 
         {/* Lista de Agendamentos */}
@@ -141,10 +213,13 @@ const AdminPanel = ({
             <div className="space-y-4">
               {filteredAppointments.map(appointment => {
                 const service = SERVICES.find(s => s.id === appointment.service);
+                const isUpdating = updatingStatus[appointment.id];
+
                 return (
-                  <div 
-                    key={appointment.id} 
-                    className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow"
+                  <div
+                    key={appointment.id}
+                    className={`border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-all ${isUpdating ? 'opacity-75' : ''
+                      }`}
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       {/* Informações do Cliente */}
@@ -181,8 +256,9 @@ const AdminPanel = ({
                           Data/Hora
                         </h4>
                         <p className="text-gray-800">
-                          {new Date(appointment.date).toLocaleDateString('pt-BR')}
+                          {formatLocalDate(appointment.date)}
                         </p>
+
                         <p className="text-sm text-gray-600">{appointment.time}</p>
                       </div>
 
@@ -190,29 +266,36 @@ const AdminPanel = ({
                       <div>
                         <h4 className="font-bold text-gray-900 mb-3">Status</h4>
                         <div className="mb-4">
-                          <span className={`inline-flex px-3 py-1 text-xs rounded-full font-medium ${
-                            appointment.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`inline-flex px-3 py-1 text-xs rounded-full font-medium ${appointment.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                            }`}>
                             {appointment.status === 'approved' ? 'Aprovado' :
-                             appointment.status === 'pending' ? 'Pendente' : 'Cancelado'}
+                              appointment.status === 'pending' ? 'Pendente' : 'Cancelado'}
                           </span>
+                          {isUpdating && (
+                            <div className="flex items-center mt-2">
+                              <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                              <span className="text-xs text-gray-500">Atualizando...</span>
+                            </div>
+                          )}
                         </div>
-                        
+
                         <div className="flex flex-wrap gap-2">
                           {appointment.status === 'pending' && (
                             <>
                               <button
-                                onClick={() => onUpdateStatus(appointment.id, 'approved')}
-                                className="flex items-center space-x-1 bg-green-600 text-white px-3 py-2 rounded-md text-sm hover:bg-green-700 transition-colors"
+                                onClick={() => handleUpdateStatus(appointment.id, 'approved')}
+                                disabled={isUpdating}
+                                className="flex items-center space-x-1 bg-green-600 text-white px-3 py-2 rounded-md text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
                                 <CheckCircle className="h-3 w-3" />
                                 <span>Aprovar</span>
                               </button>
                               <button
-                                onClick={() => onUpdateStatus(appointment.id, 'cancelled')}
-                                className="flex items-center space-x-1 bg-red-600 text-white px-3 py-2 rounded-md text-sm hover:bg-red-700 transition-colors"
+                                onClick={() => handleUpdateStatus(appointment.id, 'cancelled')}
+                                disabled={isUpdating}
+                                className="flex items-center space-x-1 bg-red-600 text-white px-3 py-2 rounded-md text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                               >
                                 <XCircle className="h-3 w-3" />
                                 <span>Cancelar</span>
@@ -221,7 +304,8 @@ const AdminPanel = ({
                           )}
                           <button
                             onClick={() => onEditAppointment(appointment)}
-                            className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-200 transition-colors"
+                            disabled={isUpdating}
+                            className="flex items-center space-x-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             <Edit className="h-3 w-3" />
                             <span>Editar</span>

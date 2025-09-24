@@ -5,3 +5,6 @@ git push origin master   # ou main, dependendo do nome da sua branch
 npm run build
 npm run deploy
 https://WesleySoares90.github.io/agendamentos
+
+
+FIRABASE C:\DieguezM\sistema-agendamento\functions> firebase deploy --only functions

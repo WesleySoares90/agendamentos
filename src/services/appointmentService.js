@@ -15,20 +15,22 @@ const COLLECTION_NAME = 'appointments';
 
 export const appointmentService = {
   // Criar novo agendamento
-  async create(appointmentData) {
-    try {
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-        ...appointmentData,
-        status: 'pending',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-      return docRef.id;
-    } catch (error) {
-      console.error('Erro ao criar agendamento:', error);
-      throw error;
-    }
-  },
+  // Apenas altere este trecho do seu código
+async create(appointmentData) {
+  try {
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+      ...appointmentData,
+      status: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    // Adicione esta linha para ver o erro detalhado no console
+    console.error('Erro ao criar agendamento:', error.message); 
+    throw error;
+  }
+},
 
   // Buscar todos os agendamentos
   async getAll() {
