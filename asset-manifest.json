@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/agendamentos/static/css/main.3b2062a7.css",
+    "main.js": "/agendamentos/static/js/main.d00ebe26.js",
+    "static/js/453.b7cc0afd.chunk.js": "/agendamentos/static/js/453.b7cc0afd.chunk.js",
+    "index.html": "/agendamentos/index.html",
+    "main.3b2062a7.css.map": "/agendamentos/static/css/main.3b2062a7.css.map",
+    "main.d00ebe26.js.map": "/agendamentos/static/js/main.d00ebe26.js.map",
+    "453.b7cc0afd.chunk.js.map": "/agendamentos/static/js/453.b7cc0afd.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.3b2062a7.css",
+    "static/js/main.d00ebe26.js"
+  ]
+}
