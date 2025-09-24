@@ -4,3 +4,4 @@ git push origin master   # ou main, dependendo do nome da sua branch
 
 
 npm run deploy
+https://WesleySoares90.github.io/agendamentos
