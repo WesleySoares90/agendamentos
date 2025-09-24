@@ -85,10 +85,9 @@ const LoginForm = ({ onSuccess, onBack }) => {
       </div>
 
       <div className="mt-4 p-4 bg-gray-100 rounded-md text-sm text-gray-600">
-        <strong>Para criar um usuário admin:</strong><br />
-        1. Use o Firebase Console<br />
-        2. Vá em Authentication → Users<br />
-        3. Adicione um usuário manualmente
+        <strong>usuário admin:</strong><br />
+        1. admin@empresa.com<br />
+        2. admin123 <br />
       </div>
     </div>
   );

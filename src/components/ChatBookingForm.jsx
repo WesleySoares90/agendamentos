@@ -110,11 +110,33 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
   };
 
   const handleOptionClick = (value) => {
-    addUserMessage(value);
+    const selectedService = SERVICES.find(s => s.id === value);
+    addUserMessage(selectedService?.name || value);
     processUserInput(value);
   };
 
   const handleKeyPress = (e) => { if (e.key === 'Enter') handleSend(); };
+
+  // Função para formatar o telefone
+  const formatPhoneNumber = (value) => {
+    if (!value) return value;
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    const phoneNumberLength = phoneNumber.length;
+    if (phoneNumberLength < 3) return phoneNumber;
+    if (phoneNumberLength < 7) {
+      return `(${phoneNumber.slice(0, 2)}) ${phoneNumber.slice(2)}`;
+    }
+    if (phoneNumberLength < 11) {
+      return `(${phoneNumber.slice(0, 2)}) ${phoneNumber.slice(2, 6)}-${phoneNumber.slice(6, 10)}`;
+    }
+    return `(${phoneNumber.slice(0, 2)}) ${phoneNumber.slice(2, 7)}-${phoneNumber.slice(7, 11)}`;
+  };
+
+  const handlePhoneChange = (e) => {
+    const formattedPhoneNumber = formatPhoneNumber(e.target.value);
+    setCurrentInput(formattedPhoneNumber);
+    setFormData(prev => ({ ...prev, phone: formattedPhoneNumber.replace(/[^\d]/g, '') }));
+  };
 
   const processUserInput = async (input) => {
     switch (currentStep) {
@@ -185,7 +207,7 @@ Confirme seus dados:
 
 👤 Nome: ${formData.name}
 📧 E-mail: ${formData.email}
-📱 Telefone: ${formData.phone}
+📱 Telefone: ${formatPhoneNumber(formData.phone)}
 ✂️ Serviço: ${serviceInfo?.name}
 💰 Valor: R$ ${serviceInfo?.price}
 📅 Data: ${formData.date.split('-').reverse().join('/')}
@@ -388,6 +410,21 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
                   onClick={() => { if(formData.date) { addUserMessage(formData.date); processUserInput(formData.date); } }}
                   className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
                 >Confirmar Data</button>
+              </div>
+            ) : currentStep === 'phone' ? (
+              <div className="flex space-x-2">
+                <input
+                  type="tel"
+                  value={currentInput}
+                  onChange={handlePhoneChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder="(99) 99999-9999"
+                  className="flex-1 px-4 py-3 bg-gray-800 border border-green-500 rounded-xl text-white"
+                  disabled={loading || isTyping}
+                />
+                <button onClick={handleSend} disabled={loading || isTyping || !currentInput.trim()} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700">
+                  <Send className="h-5 w-5" />
+                </button>
               </div>
             ) : (
               <div className="flex space-x-2">
