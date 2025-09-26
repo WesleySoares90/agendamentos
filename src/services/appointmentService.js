@@ -15,7 +15,6 @@ const COLLECTION_NAME = 'appointments';
 
 export const appointmentService = {
   // Criar novo agendamento
-  // Apenas altere este trecho do seu código
 async create(appointmentData) {
   try {
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {

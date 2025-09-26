@@ -74,19 +74,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     hasSentWelcome.current = true;
     setCurrentStep('confirmation');
     const selectedService = SERVICES.find(s => s.id === editingAppointment.service);
-    const confirmationText = `
-Você está editando seu agendamento:
-
-👤 Nome: ${editingAppointment.name}
-📧 E-mail: ${editingAppointment.email}
-📱 Telefone: ${editingAppointment.phone}
-✂️ Serviço: ${selectedService?.name}
-💰 Valor: R$ ${selectedService?.price}
-📅 Data: ${editingAppointment.date.split('-').reverse().join('/')}
-🕐 Horário: ${editingAppointment.time}
-
-Digite "ALTERAR" para modificar ou "SIM" para confirmar.
-`;
+    const confirmationText = `\nVocê está editando seu agendamento:\n\n👤 Nome: ${editingAppointment.name}\n📧 E-mail: ${editingAppointment.email}\n📱 Telefone: ${editingAppointment.phone}\n✂️ Serviço: ${selectedService?.name}\n💰 Valor: R$ ${selectedService?.price}\n📅 Data: ${editingAppointment.date.split('-').reverse().join('/')}\n🕐 Horário: ${editingAppointment.time}\n\nDigite "ALTERAR" para modificar ou "SIM" para confirmar.\n`;
     setTimeout(() => addBotMessage(confirmationText), 500);
   }, [editingAppointment]);
 
@@ -111,6 +99,19 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
   };
 
   const handleOptionClick = (value) => {
+    if (value === 'ver_servicos') {
+      addUserMessage('Ver Serviços');
+      setViewMode('services');
+      return;
+    }
+    
+    if (value === 'fazer_reserva') {
+      addUserMessage('Fazer Reserva');
+      setCurrentStep('email');
+      setTimeout(() => addBotMessage(`Perfeito, ${formData.name}! Agora preciso do seu e-mail.`), 500);
+      return;
+    }
+
     const selectedService = SERVICES.find(s => s.id === value);
     addUserMessage(selectedService?.name || value);
     processUserInput(value);
@@ -143,16 +144,29 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
     switch (currentStep) {
       case 'welcome':
         setFormData(prev => ({ ...prev, name: input }));
-        setCurrentStep('email');
-        setTimeout(() => addBotMessage(`Prazer em conhecê-lo, ${input}! Agora preciso do seu e-mail.`), 500);
+        setCurrentStep('choose_action');
+        setTimeout(() => {
+          const actionOptions = [
+            { value: 'ver_servicos', name: 'Ver Serviços' },
+            { value: 'fazer_reserva', name: 'Fazer Reserva' }
+          ];
+          addBotMessage(`Prazer em conhecê-lo, ${input}! O que você gostaria de fazer?`, actionOptions);
+        }, 500);
         break;
 
       case 'email':
         if (!validateEmail(input)) return addBotMessage("Digite um e-mail válido.");
         setFormData(prev => ({ ...prev, email: input }));
         setUserEmail(input);
-        setCurrentStep('phone');
-        setTimeout(() => addBotMessage("Digite seu telefone com DDD (exemplo: 11999999999)"), 500);
+        // Se o serviço já foi selecionado via grid, pular para 'date'
+        if (formData.service) {
+          setCurrentStep('date');
+          const selectedService = SERVICES.find(s => s.id === formData.service);
+          setTimeout(() => addBotMessage(`Você selecionou: ${selectedService.name}. Agora, escolha a data desejada.`), 500);
+        } else {
+          setCurrentStep('phone');
+          setTimeout(() => addBotMessage("Digite seu telefone com DDD (exemplo: 11999999999)"), 500);
+        }
         break;
 
       case 'phone':
@@ -203,19 +217,7 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
         setCurrentStep('confirmation');
         const serviceInfo = SERVICES.find(s => s.id === formData.service);
         setTimeout(() => {
-          addBotMessage(`
-Confirme seus dados:
-
-👤 Nome: ${formData.name}
-📧 E-mail: ${formData.email}
-📱 Telefone: ${formatPhoneNumber(formData.phone)}
-✂️ Serviço: ${serviceInfo?.name}
-💰 Valor: R$ ${serviceInfo?.price}
-📅 Data: ${formData.date.split('-').reverse().join('/')}
-🕐 Horário: ${formData.time}
-
-Digite "SIM" para confirmar ou "ALTERAR" para modificar.
-`);
+          addBotMessage(`\nConfirme seus dados:\n\n👤 Nome: ${formData.name}\n📧 E-mail: ${formData.email}\n📱 Telefone: ${formatPhoneNumber(formData.phone)}\n✂️ Serviço: ${serviceInfo?.name}\n💰 Valor: R$ ${serviceInfo?.price}\n📅 Data: ${formData.date.split('-').reverse().join('/')}\n🕐 Horário: ${formData.time}\n\nDigite "SIM" para confirmar ou "ALTERAR" para modificar.\n`);
         }, 500);
         break;
 
@@ -262,26 +264,68 @@ Digite "SIM" para confirmar ou "ALTERAR" para modificar.
   const handleBackToChat = () => setViewMode('chat');
 
   const handleEditAppointment = (appointment) => {
+    // Verificar se o agendamento foi criado hoje
+    const today = new Date();
+    const createdDate = new Date(appointment.createdAt);
+    
+    // Comparar apenas a data (ignorar horário)
+    const isToday = today.toDateString() === createdDate.toDateString();
+    
+    if (!isToday) {
+      addBotMessage("Desculpe, você só pode alterar reservas no mesmo dia em que foram feitas.");
+      return;
+    }
+
     setFormData(appointment);
     setCurrentStep('confirmation');
     setMessages([]);
     hasSentWelcome.current = true;
     setViewMode('chat');
     const selectedService = SERVICES.find(s => s.id === appointment.service);
-    addBotMessage(`
-Você está editando seu agendamento:
-
-👤 Nome: ${appointment.name}
-📧 E-mail: ${appointment.email}
-📱 Telefone: ${appointment.phone}
-✂️ Serviço: ${selectedService?.name}
-💰 Valor: R$ ${selectedService?.price}
-📅 Data: ${appointment.date.split('-').reverse().join('/')}
-🕐 Horário: ${appointment.time}
-
-Digite "ALTERAR" para modificar ou "SIM" para confirmar.
-`);
+    addBotMessage(`\nVocê está editando seu agendamento:\n\n👤 Nome: ${appointment.name}\n📧 E-mail: ${appointment.email}\n📱 Telefone: ${appointment.phone}\n✂️ Serviço: ${selectedService?.name}\n💰 Valor: R$ ${selectedService?.price}\n📅 Data: ${appointment.date.split('-').reverse().join('/')}\n🕐 Horário: ${appointment.time}\n\nDigite "ALTERAR" para modificar ou "SIM" para confirmar.\n`);
   };
+
+  const handleServiceSelect = (serviceId) => {
+    setFormData(prev => ({ ...prev, service: serviceId }));
+    setViewMode('chat');
+    setCurrentStep('email'); // Agora vai para o email
+    setMessages([]);
+    hasSentWelcome.current = true;
+    
+    const selectedService = SERVICES.find(s => s.id === serviceId);
+    addBotMessage(`Você selecionou: ${selectedService.name}. Agora, preciso do seu e-mail para continuar o agendamento.`);
+  };
+
+  const renderServices = () => (
+    <div className="max-w-6xl mx-auto bg-gray-900 rounded-lg shadow-lg">
+      <div className="bg-gray-800 p-4 rounded-t-lg flex justify-between items-center">
+        <h1 className="text-xl font-bold text-white">Nossos Serviços</h1>
+        <button onClick={handleBackToChat} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Voltar</button>
+      </div>
+      <div className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {SERVICES.map(service => (
+            <div key={service.id} className="bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                <div className="text-white text-6xl">✂️</div>
+              </div>
+              <div className="p-6">
+                <h3 className="text-white font-bold text-xl mb-2">{service.name}</h3>
+                <p className="text-gray-300 mb-2">Duração: {service.duration} minutos</p>
+                <p className="text-green-400 font-bold text-2xl mb-4">R$ ${service.price}</p>
+                <button 
+                  onClick={() => handleServiceSelect(service.id)}
+                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  Reservar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   const renderReservations = () => (
     <div className="max-w-2xl mx-auto bg-gray-900 rounded-lg shadow-lg">
@@ -298,9 +342,9 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
             <div key={a.id} className="bg-gray-800 p-6 rounded-xl shadow-md flex justify-between items-center hover:shadow-lg transition-shadow">
               <div>
                 <h3 className="text-white font-bold text-lg">{service?.name}</h3>
-                <p className="text-gray-300">📅 {a.date.split('-').reverse().join('/')}</p>
-                <p className="text-gray-300">🕐 {a.time}</p>
-                <p className="text-gray-300 font-semibold">💰 R$ {service?.price}</p>
+                <p className="text-gray-300">📅 ${a.date.split('-').reverse().join('/')}</p>
+                <p className="text-gray-300">🕐 ${a.time}</p>
+                <p className="text-gray-300 font-semibold">💰 R$ ${service?.price}</p>
               </div>
               <button onClick={() => handleEditAppointment(a)} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors">
                 <Edit className="h-4 w-4" /> Editar
@@ -313,6 +357,7 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
   );
 
   if (viewMode === 'reservations') return renderReservations();
+  if (viewMode === 'services') return renderServices();
 
   return (
     <div 
@@ -333,6 +378,20 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
               <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-md ${m.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-white'}`}>
                 <p className="text-sm whitespace-pre-line">{m.text}</p>
 
+                {m.options && currentStep === 'choose_action' && (
+                  <div className="mt-4 space-y-2">
+                    {m.options.map((opt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleOptionClick(opt.value)}
+                        className="w-full p-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-semibold"
+                      >
+                        {opt.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {m.options && currentStep === 'service' && (
                   <div className="mt-4 space-y-3">
                     {m.options.map((opt, i) => {
@@ -345,7 +404,7 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
                         >
                           <div>
                             <span className="font-semibold text-lg">{service?.name}</span>
-                            <p className="text-gray-400 text-sm">R$ {service?.price} • {service?.duration}min</p>
+                            <p className="text-gray-400 text-sm">R$ ${service?.price} • ${service?.duration}min</p>
                           </div>
                           <button className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">
                             Selecionar
@@ -374,13 +433,13 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
                                 : 'bg-gray-800 text-gray-400 cursor-not-allowed opacity-60'
                             }`}
                           >
-                            <span className="text-xl font-bold">{opt.label}</span>
+                            <span className="text-xl font-bold">${opt.label}</span>
                             <span className="text-xs mt-1">
-                              {isAvailable ? 'Disponível' : 'Indisponível'}
+                              ${isAvailable ? 'Disponível' : 'Indisponível'}
                             </span>
                             {!isAvailable && conflictCount > 0 && (
                               <span className="text-red-300 text-xs mt-1">
-                                ({conflictCount} agendamento{conflictCount > 1 ? 's' : ''})
+                                (${conflictCount} agendamento${conflictCount > 1 ? 's' : ''})
                               </span>
                             )}
                           </button>
@@ -396,47 +455,36 @@ Digite "ALTERAR" para modificar ou "SIM" para confirmar.
           <div ref={messagesEndRef} />
         </div>
 
-        {currentStep !== 'completed' && (
+        {currentStep === 'date' && (
           <div className="p-4 border-t border-gray-700">
-            {currentStep === 'date' ? (
-                <DateSelector
-                    onDateSelect={(date) => {
-                        setFormData(prev => ({ ...prev, date }));
-                        addUserMessage(date.split('-').reverse().join('/'));
-                        processUserInput(date);
-                    }}
-                />
-            ) : currentStep === 'phone' ? (
-              <div className="flex space-x-2">
-                <input
-                  type="tel"
-                  value={currentInput}
-                  onChange={handlePhoneChange}
-                  onKeyPress={handleKeyPress}
-                  placeholder="(99) 99999-9999"
-                  className="flex-1 px-4 py-3 bg-gray-800 border border-green-500 rounded-xl text-white"
-                  disabled={loading || isTyping}
-                />
-                <button onClick={handleSend} disabled={loading || isTyping || !currentInput.trim()} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700">
-                  <Send className="h-5 w-5" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={currentInput}
-                  onChange={(e) => setCurrentInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Digite sua resposta..."
-                  className="flex-1 px-4 py-3 bg-gray-800 border border-green-500 rounded-xl text-white"
-                  disabled={loading || isTyping}
-                />
-                <button onClick={handleSend} disabled={loading || isTyping || !currentInput.trim()} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700">
-                  <Send className="h-5 w-5" />
-                </button>
-              </div>
-            )}
+            <DateSelector
+              selectedDate={formData.date}
+              onDateSelect={(date) => processUserInput(date)}
+              appointments={appointments}
+            />
+          </div>
+        )}
+
+        {currentStep !== 'date' && currentStep !== 'completed' && (
+          <div className="p-4 border-t border-gray-700">
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={currentInput}
+                onChange={currentStep === 'phone' ? handlePhoneChange : (e) => setCurrentInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Digite sua mensagem..."
+                className="flex-1 px-4 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-800 text-white placeholder-gray-400"
+                disabled={loading}
+              />
+              <button
+                onClick={handleSend}
+                disabled={loading || !currentInput.trim()}
+                className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         )}
       </div>
