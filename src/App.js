@@ -79,7 +79,7 @@ function App() {
   if (currentView === 'login') {
     return (
       <div style={{ minHeight: '100vh', padding: '2rem 1rem' }}>
-        <LoginForm 
+        <LoginForm
           onSuccess={handleLoginSuccess}
           onBack={handleBackToBooking}
         />
@@ -102,33 +102,33 @@ function App() {
     );
   }
 
- // View: Booking Form (padrão)
-return (
-  <>
-   <button
-  onClick={() => setCurrentView('login')}
-  className="fixed bottom-4 left-4 z-[9999] bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg hover:bg-white transition-all flex items-center gap-2 text-gray-900 font-medium border border-gray-200 text-sm md:text-base"
->
-  <Shield size={16} />
-  <span className="hidden sm:inline">Acesso Administrativo</span>
-  <span className="sm:hidden">Admin</span>
-</button>
-
-    <BookingForm
-      onSubmit={handleBookingSubmit}
-      loading={loading}
-      editingAppointment={editingAppointment}
-    />
-    
-    {error && (
-      <div className="container" style={{ marginTop: '1rem' }}>
-        <div className="alert alert-error">
-          ⚠️ {error}
+  // View: Booking Form (padrão)
+  return (
+    <>
+      <button
+        onClick={() => setCurrentView('login')}
+        className="fixed top-2 right-2 md:top-4 md:right-4 z-[9999] bg-white/90 backdrop-blur-sm px-2 py-1.5 md:px-4 md:py-2 rounded-lg shadow-lg hover:bg-white transition-all flex items-center gap-1.5 md:gap-2 text-gray-900 font-medium border border-gray-200 text-xs md:text-sm"
+      >
+        <Shield size={14} className="md:w-4 md:h-4" />
+        <span className="hidden sm:inline">Acesso Administrativo</span>
+        <span className="sm:hidden">Admin</span>
+      </button>
+  
+      <BookingForm
+        onSubmit={handleBookingSubmit}
+        loading={loading}
+        editingAppointment={editingAppointment}
+      />
+  
+      {error && (
+        <div className="container" style={{ marginTop: '1rem' }}>
+          <div className="alert alert-error">
+            ⚠️ {error}
+          </div>
         </div>
-      </div>
-    )}
-  </>
-);
+      )}
+    </>
+  );
 }
 
 export default App;
