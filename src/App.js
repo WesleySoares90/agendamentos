@@ -105,14 +105,14 @@ function App() {
  // View: Booking Form (padrão)
 return (
   <>
-    {/* Botão Admin - FORA do container principal */}
-    <button
-      onClick={() => setCurrentView('login')}
-      className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg hover:bg-white transition-all flex items-center gap-2 text-gray-900 font-medium border border-gray-200"
-    >
-      <Shield size={16} />
-      Acesso Administrativo
-    </button>
+   <button
+  onClick={() => setCurrentView('login')}
+  className="fixed bottom-4 left-4 z-[9999] bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg hover:bg-white transition-all flex items-center gap-2 text-gray-900 font-medium border border-gray-200 text-sm md:text-base"
+>
+  <Shield size={16} />
+  <span className="hidden sm:inline">Acesso Administrativo</span>
+  <span className="sm:hidden">Admin</span>
+</button>
 
     <BookingForm
       onSubmit={handleBookingSubmit}
