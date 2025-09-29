@@ -102,45 +102,33 @@ function App() {
     );
   }
 
-  // View: Booking Form (padrão)
-  return (
-    <div style={{ minHeight: '100vh', padding: '2rem 1rem' }}>
-      <BookingForm
-        onSubmit={handleBookingSubmit}
-        loading={loading}
-        editingAppointment={editingAppointment}
-      />
-      
-      {error && (
-        <div className="container" style={{ marginTop: '1rem' }}>
-          <div className="alert alert-error">
-            ⚠️ {error}
-          </div>
-        </div>
-      )}
+ // View: Booking Form (padrão)
+return (
+  <>
+    {/* Botão Admin - FORA do container principal */}
+    <button
+      onClick={() => setCurrentView('login')}
+      className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg hover:bg-white transition-all flex items-center gap-2 text-gray-900 font-medium border border-gray-200"
+    >
+      <Shield size={16} />
+      Acesso Administrativo
+    </button>
 
-      {/* Botão Admin */}
-      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-        <button
-          onClick={() => setCurrentView('login')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#3b82f6',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            margin: '0 auto',
-            fontSize: '0.875rem'
-          }}
-        >
-          <Shield size={16} />
-          Acesso Administrativo
-        </button>
+    <BookingForm
+      onSubmit={handleBookingSubmit}
+      loading={loading}
+      editingAppointment={editingAppointment}
+    />
+    
+    {error && (
+      <div className="container" style={{ marginTop: '1rem' }}>
+        <div className="alert alert-error">
+          ⚠️ {error}
+        </div>
       </div>
-    </div>
-  );
+    )}
+  </>
+);
 }
 
 export default App;
