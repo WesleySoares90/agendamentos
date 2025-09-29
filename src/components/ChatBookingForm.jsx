@@ -533,7 +533,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       className="min-h-screen p-2 md:p-4 bg-cover bg-center bg-fixed bg-no-repeat flex items-center justify-center"
       style={{ backgroundImage: `url(${bgImage})` }}
     >
-      <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-lg h-[95vh] max-h-[700px] flex flex-col overflow-hidden">
+      <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-lg h-[95vh] max-h-[650px] flex flex-col overflow-hidden">
         <Header title="Agendamento" />
         <MobileMenu />
 
