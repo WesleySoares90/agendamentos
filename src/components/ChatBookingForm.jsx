@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Eye, Edit } from 'lucide-react';
+import { Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar } from 'lucide-react';
 import { SERVICES, TIME_SLOTS } from '../utils/constants';
 import { useAppointments } from '../hooks/useAppointments';
 import { appointmentService } from '../services/appointmentService';
-import DateSelector from './DateSelector'; // Importação do novo componente
+import DateSelector from './DateSelector';
 
 import bgImage from '../img/salao-ipanema-1024x576.jpg.webp';
 
@@ -15,6 +15,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const [userEmail, setUserEmail] = useState('');
   const [userAppointments, setUserAppointments] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: editingAppointment?.name || '',
     email: editingAppointment?.email || '',
@@ -36,10 +37,10 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
   const checkAvailableSlots = async (selectedDate) => {
     if (!selectedDate) return;
-    
+
     try {
-      const dayAppointments = appointments.filter(apt => 
-        apt.date === selectedDate && 
+      const dayAppointments = appointments.filter(apt =>
+        apt.date === selectedDate &&
         apt.status !== 'cancelled'
       );
 
@@ -78,10 +79,10 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     setTimeout(() => addBotMessage(confirmationText), 500);
   }, [editingAppointment]);
 
-  const addBotMessage = (text, options = null) => {
+  const addBotMessage = (text, options = null, isSystem = false) => {
     setIsTyping(true);
     setTimeout(() => {
-      setMessages(prev => [...prev, { type: 'bot', text, options }]);
+      setMessages(prev => [...prev, { type: 'bot', text, options, isSystem }]);
       setIsTyping(false);
     }, 800);
   };
@@ -104,7 +105,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       setViewMode('services');
       return;
     }
-    
+
     if (value === 'fazer_reserva') {
       addUserMessage('Fazer Reserva');
       setCurrentStep('email');
@@ -155,71 +156,86 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         break;
 
       case 'email':
-        if (!validateEmail(input)) return addBotMessage("Digite um e-mail válido.");
+        if (!validateEmail(input)) {
+          addBotMessage("Digite um e-mail válido.", null, true);
+          return;
+        }
         setFormData(prev => ({ ...prev, email: input }));
         setUserEmail(input);
-        // Se o serviço já foi selecionado via grid, pular para 'date'
-        if (formData.service) {
-          setCurrentStep('date');
-          const selectedService = SERVICES.find(s => s.id === formData.service);
-          setTimeout(() => addBotMessage(`Você selecionou: ${selectedService.name}. Agora, escolha a data desejada.`), 500);
-        } else {
-          setCurrentStep('phone');
-          setTimeout(() => addBotMessage("Digite seu telefone com DDD (exemplo: 11999999999)"), 500);
-        }
+        // Próximo passo: pedir telefone
+        setCurrentStep('phone');
+        addBotMessage("Ótimo! Agora, digite seu telefone com DDD (exemplo: 11999999999)");
         break;
 
       case 'phone':
-        if (!validatePhone(input)) return addBotMessage("Digite um telefone válido com DDD.");
+        if (!validatePhone(input)) {
+          addBotMessage("Digite um telefone válido com DDD.", null, true);
+          return;
+        }
         setFormData(prev => ({ ...prev, phone: input }));
-        setCurrentStep('service');
-        setTimeout(() => {
-          const serviceOptions = SERVICES.map(s => ({ value: s.id, name: s.name, price: s.price, duration: s.duration }));
-          addBotMessage("Escolha o serviço desejado:", serviceOptions);
-        }, 500);
+
+        if (formData.service) {
+          // Serviço já selecionado → pula para data
+          setCurrentStep('date');
+          addBotMessage("Agora, escolha a data desejada:");
+        } else {
+          // Serviço ainda não selecionado → pede serviço
+          setCurrentStep('service');
+          setTimeout(() => {
+            const serviceOptions = SERVICES.map(s => ({
+              value: s.id,
+              name: s.name,
+              price: s.price,
+              duration: s.duration
+            }));
+            addBotMessage("Agora, escolha o serviço desejado:", serviceOptions);
+          }, 500);
+        }
         break;
 
       case 'service':
         const selectedService = SERVICES.find(s => s.id === input);
-        if (!selectedService) return addBotMessage("Selecione um serviço válido.");
+        if (!selectedService) {
+          addBotMessage("Selecione um serviço válido.", null, true);
+          return;
+        }
         setFormData(prev => ({ ...prev, service: input }));
         setCurrentStep('date');
-        setTimeout(() => addBotMessage(`Você selecionou: ${selectedService.name}. Agora, escolha a data desejada.`), 500);
+        addBotMessage(`Você selecionou: ${selectedService.name}. Agora, escolha a data desejada.`);
         break;
+
 
       case 'date':
         if (!input) return;
         setFormData(prev => ({ ...prev, date: input }));
         setCurrentStep('time');
-        
+
         const slotsStatus = await checkAvailableSlots(input);
-        
-        setTimeout(() => {
-          const timeOptions = slotsStatus.map(slot => ({ 
-            value: slot.time, 
-            label: slot.time, 
-            available: slot.available,
-            count: slot.count
-          }));
-          addBotMessage("Escolha o horário disponível:", timeOptions);
-        }, 500);
+
         break;
 
       case 'time':
-        if (!TIME_SLOTS.includes(input)) return addBotMessage("Escolha um horário disponível.");
-        
-        const slotInfo = availableSlots.find(slot => slot.time === input);
-        if (slotInfo && !slotInfo.available) {
-          return addBotMessage("Este horário não está mais disponível. Escolha outro horário.");
+        // Valida se o horário escolhido existe
+        if (!TIME_SLOTS.includes(input)) {
+          addBotMessage("Escolha um horário disponível.", null, true);
+          return;
         }
-        
+
+        // Salva o horário
         setFormData(prev => ({ ...prev, time: input }));
         setCurrentStep('confirmation');
+
+        // Busca infos do serviço selecionado
         const serviceInfo = SERVICES.find(s => s.id === formData.service);
+
+        // Mostra a tela de confirmação
         setTimeout(() => {
-          addBotMessage(`\nConfirme seus dados:\n\n👤 Nome: ${formData.name}\n📧 E-mail: ${formData.email}\n📱 Telefone: ${formatPhoneNumber(formData.phone)}\n✂️ Serviço: ${serviceInfo?.name}\n💰 Valor: R$ ${serviceInfo?.price}\n📅 Data: ${formData.date.split('-').reverse().join('/')}\n🕐 Horário: ${formData.time}\n\nDigite "SIM" para confirmar ou "ALTERAR" para modificar.\n`);
+          addBotMessage(
+            `\nConfirme seus dados:\n\n👤 Nome: ${formData.name}\n📧 E-mail: ${formData.email}\n📱 Telefone: ${formatPhoneNumber(formData.phone)}\n✂️ Serviço: ${serviceInfo?.name}\n💰 Valor: R$ ${serviceInfo?.price}\n📅 Data: ${formData.date.split('-').reverse().join('/')}\n🕐 Horário: ${input}\n\nDigite "SIM" para confirmar ou "ALTERAR" para modificar.\n`
+          );
         }, 500);
         break;
+
 
       case 'confirmation':
         if (input.toLowerCase() === 'sim') return handleFinalSubmit();
@@ -230,28 +246,29 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           hasSentWelcome.current = false;
           return setTimeout(() => addBotMessage("Vamos recomeçar. Qual o seu nome?"), 500);
         }
-        addBotMessage("Digite 'SIM' para confirmar ou 'ALTERAR' para modificar.");
+        addBotMessage("Digite 'SIM' para confirmar ou 'ALTERAR' para modificar.", null, true);
         break;
     }
   };
 
   const handleFinalSubmit = async () => {
     const finalCheck = await appointmentService.checkTimeConflict(
-      formData.date, 
-      formData.time, 
+      formData.date,
+      formData.time,
       editingAppointment?.id
     );
-    
+
     if (finalCheck) {
-      return addBotMessage("Ops! Este horário acabou de ser reservado. Escolha outro horário.");
+      addBotMessage("Ops! Este horário acabou de ser reservado. Escolha outro horário.", null, true);
+      return;
     }
-    
+
     const result = await onSubmit(formData);
     if (result.success) {
       setCurrentStep('completed');
       addBotMessage("🎉 Agendamento realizado com sucesso!");
     } else {
-      addBotMessage("Ocorreu um erro ao processar seu agendamento. Tente novamente.");
+      addBotMessage("Ocorreu um erro ao processar seu agendamento. Tente novamente.", null, true);
     }
   };
 
@@ -259,20 +276,21 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     const reservations = getUserAppointments(userEmail || formData.email);
     setUserAppointments(reservations);
     setViewMode('reservations');
+    setIsMobileMenuOpen(false);
   };
 
-  const handleBackToChat = () => setViewMode('chat');
+  const handleBackToChat = () => {
+    setViewMode('chat');
+    setIsMobileMenuOpen(false);
+  };
 
   const handleEditAppointment = (appointment) => {
-    // Verificar se o agendamento foi criado hoje
     const today = new Date();
     const createdDate = new Date(appointment.createdAt);
-    
-    // Comparar apenas a data (ignorar horário)
     const isToday = today.toDateString() === createdDate.toDateString();
-    
+
     if (!isToday) {
-      addBotMessage("Desculpe, você só pode alterar reservas no mesmo dia em que foram feitas.");
+      addBotMessage("Desculpe, você só pode alterar reservas no mesmo dia em que foram feitas.", null, true);
       return;
     }
 
@@ -288,39 +306,153 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const handleServiceSelect = (serviceId) => {
     setFormData(prev => ({ ...prev, service: serviceId }));
     setViewMode('chat');
-    setCurrentStep('email'); // Agora vai para o email
+    setCurrentStep('email');
     setMessages([]);
     hasSentWelcome.current = true;
-    
+
     const selectedService = SERVICES.find(s => s.id === serviceId);
     addBotMessage(`Você selecionou: ${selectedService.name}. Agora, preciso do seu e-mail para continuar o agendamento.`);
   };
 
-  const renderServices = () => (
-    <div className="max-w-6xl mx-auto bg-gray-900 rounded-lg shadow-lg">
-      <div className="bg-gray-800 p-4 rounded-t-lg flex justify-between items-center">
-        <h1 className="text-xl font-bold text-white">Nossos Serviços</h1>
-        <button onClick={handleBackToChat} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Voltar</button>
+  // Header Component
+  const Header = ({ title, showBackButton = false }) => (
+    <div className="bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-lg flex justify-between items-center sticky top-0 z-10 shadow-sm">
+      <div className="flex items-center gap-3">
+        {showBackButton && (
+          <button
+            onClick={handleBackToChat}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors md:hidden"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
+        <h1 className="text-lg md:text-xl font-semibold text-gray-900 truncate">{title}</h1>
       </div>
+
+      <div className="flex items-center gap-2">
+        {/* Desktop buttons */}
+        <div className="hidden md:flex gap-2">
+          {viewMode === 'chat' && (
+            <button
+              onClick={handleCheckReservations}
+              className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              <Eye className="h-4 w-4" /> Ver Reservas
+            </button>
+          )}
+          {viewMode !== 'chat' && (
+            <button
+              onClick={handleBackToChat}
+              className="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              Voltar
+            </button>
+          )}
+        </div>
+
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors md:hidden"
+        >
+          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </div>
+    </div>
+  );
+
+  // Mobile Menu Component
+  const MobileMenu = () => (
+    <div className={`md:hidden bg-white border-b border-gray-200 transition-all duration-300 ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
+      <div className="p-4 space-y-2">
+        {viewMode === 'chat' && (
+          <button
+            onClick={handleCheckReservations}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            <Eye className="h-4 w-4" /> Ver Reservas
+          </button>
+        )}
+        {viewMode !== 'chat' && (
+          <button
+            onClick={handleBackToChat}
+            className="w-full bg-gray-900 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Voltar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  // Service Card Component
+  const ServiceCard = ({ service, onSelect }) => (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
       <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex items-start justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-gray-700 transition-colors">
+            {service.name}
+          </h3>
+          <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+            <div className="text-gray-600 text-xl">✨</div>
+          </div>
+        </div>
+
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Clock className="h-4 w-4" />
+            <span>{service.duration} minutos</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-gray-600" />
+            <span className="text-xl font-bold text-gray-900">R$ {service.price}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => onSelect(service.id)}
+          className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 active:bg-gray-700 transition-colors font-medium"
+        >
+          Agendar Serviço
+        </button>
+      </div>
+    </div>
+  );
+
+  // Time Slot Card Component
+  const TimeSlotCard = ({ slot, onSelect, isSelected }) => (
+    <button
+      onClick={() => onSelect(slot.time)}
+      disabled={!slot.available}
+      className={`p-4 rounded-lg border transition-all duration-200 ${isSelected
+        ? 'bg-gray-900 text-white border-gray-900'
+        : slot.available
+          ? 'bg-white text-gray-900 border-gray-200 hover:border-gray-300 hover:shadow-sm'
+          : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+        }`}
+    >
+      <div className="text-center">
+        <div className="font-semibold">{slot.time}</div>
+        {!slot.available && (
+          <div className="text-xs mt-1">Ocupado</div>
+        )}
+      </div>
+    </button>
+  );
+
+  const renderServices = () => (
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
+      <Header title="Nossos Serviços" showBackButton={true} />
+      <MobileMenu />
+
+      <div className="p-4 md:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {SERVICES.map(service => (
-            <div key={service.id} className="bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <div className="text-white text-6xl">✂️</div>
-              </div>
-              <div className="p-6">
-                <h3 className="text-white font-bold text-xl mb-2">{service.name}</h3>
-                <p className="text-gray-300 mb-2">Duração: {service.duration} minutos</p>
-                <p className="text-green-400 font-bold text-2xl mb-4">R$ ${service.price}</p>
-                <button 
-                  onClick={() => handleServiceSelect(service.id)}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                >
-                  Reservar
-                </button>
-              </div>
-            </div>
+            <ServiceCard
+              key={service.id}
+              service={service}
+              onSelect={handleServiceSelect}
+            />
           ))}
         </div>
       </div>
@@ -328,165 +460,184 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   );
 
   const renderReservations = () => (
-    <div className="max-w-2xl mx-auto bg-gray-900 rounded-lg shadow-lg">
-      <div className="bg-gray-800 p-4 rounded-t-lg flex justify-between items-center">
-        <h1 className="text-xl font-bold text-white">Minhas Reservas</h1>
-        <button onClick={handleBackToChat} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Voltar</button>
-      </div>
-      <div className="p-6 space-y-4">
+    <div className="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
+      <Header title="Minhas Reservas" showBackButton={true} />
+      <MobileMenu />
+
+      <div className="p-4 md:p-6">
         {userAppointments.length === 0 ? (
-          <p className="text-gray-400 text-center">Você não possui agendamentos.</p>
-        ) : userAppointments.map(a => {
-          const service = SERVICES.find(s => s.id === a.service);
-          return (
-            <div key={a.id} className="bg-gray-800 p-6 rounded-xl shadow-md flex justify-between items-center hover:shadow-lg transition-shadow">
-              <div>
-                <h3 className="text-white font-bold text-lg">{service?.name}</h3>
-                <p className="text-gray-300">📅 ${a.date.split('-').reverse().join('/')}</p>
-                <p className="text-gray-300">🕐 ${a.time}</p>
-                <p className="text-gray-300 font-semibold">💰 R$ ${service?.price}</p>
-              </div>
-              <button onClick={() => handleEditAppointment(a)} className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors">
-                <Edit className="h-4 w-4" /> Editar
-              </button>
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-gray-400" />
             </div>
-          );
-        })}
+            <p className="text-gray-500 text-lg">Você não possui agendamentos.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {userAppointments.map(a => {
+              const service = SERVICES.find(s => s.id === a.service);
+              return (
+                <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-300">
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">{service?.name}</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar className="h-4 w-4" />
+                          <span>{a.date.split('-').reverse().join('/')}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Clock className="h-4 w-4" />
+                          <span>{a.time}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <DollarSign className="h-4 w-4" />
+                          <span className="font-semibold">R$ {service?.price}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Clock className="h-4 w-4" />
+                          <span>{service?.duration}min</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleEditAppointment(a)}
+                      className="w-full lg:w-auto bg-gray-900 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors font-medium"
+                    >
+                      <Edit className="h-4 w-4" /> Editar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 
-  if (viewMode === 'reservations') return renderReservations();
-  if (viewMode === 'services') return renderServices();
+  if (viewMode === 'reservations') return (
+    <div className="min-h-screen p-2 md:p-4 bg-gray-50 flex items-center justify-center">
+      {renderReservations()}
+    </div>
+  );
+
+  if (viewMode === 'services') return (
+    <div className="min-h-screen p-2 md:p-4 bg-gray-50 flex items-center justify-center">
+      {renderServices()}
+    </div>
+  );
 
   return (
-    <div 
-      className="flex justify-center items-center min-h-screen p-4 bg-cover bg-center bg-fixed bg-no-repeat"
+    <div
+      className="min-h-screen p-2 md:p-4 bg-cover bg-center bg-fixed bg-no-repeat flex items-center justify-center"
       style={{ backgroundImage: `url(${bgImage})` }}
     >
-      <div className="max-w-2xl mx-auto bg-gray-900 bg-opacity-90 rounded-lg shadow-lg h-[600px] flex flex-col">
-        <div className="bg-gray-800 bg-opacity-90 p-4 rounded-t-lg flex justify-between items-center border-b border-gray-700">
-          <h1 className="text-xl font-bold text-white">Agendamento</h1>
-          <button onClick={handleCheckReservations} className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600">
-            <Eye className="h-4 w-4" /> Ver Reservas
-          </button>
-        </div>
+      <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-lg h-[95vh] max-h-[700px] flex flex-col overflow-hidden">
+        <Header title="Agendamento" />
+        <MobileMenu />
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 bg-gray-50">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow-md ${m.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-white'}`}>
-                <p className="text-sm whitespace-pre-line">{m.text}</p>
-
-                {m.options && currentStep === 'choose_action' && (
-                  <div className="mt-4 space-y-2">
-                    {m.options.map((opt, i) => (
+              <div className={`max-w-[85%] md:max-w-[75%] p-3 md:p-4 rounded-2xl shadow-sm ${m.type === 'user'
+                ? 'bg-gray-900 text-white rounded-br-md'
+                : m.isSystem
+                  ? 'bg-red-100 text-red-800 border border-red-200 rounded-bl-md'
+                  : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'
+                }`}>
+                <p className="text-sm md:text-base leading-relaxed whitespace-pre-line">{m.text}</p>
+                {m.options && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {m.options.map((option, optIdx) => (
                       <button
-                        key={i}
-                        onClick={() => handleOptionClick(opt.value)}
-                        className="w-full p-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-semibold"
+                        key={optIdx}
+                        onClick={() => handleOptionClick(option.value)}
+                        className={`px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${option.available === false
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                          : 'bg-gray-900 hover:bg-gray-800 text-white'
+                          }`}
+                        disabled={option.available === false}
                       >
-                        {opt.name}
+                        {option.label || option.name} {option.count > 0 && `(${option.count})`}
                       </button>
                     ))}
-                  </div>
-                )}
-
-                {m.options && currentStep === 'service' && (
-                  <div className="mt-4 space-y-3">
-                    {m.options.map((opt, i) => {
-                      const service = SERVICES.find(s => s.id === opt.value);
-                      return (
-                        <div
-                          key={i}
-                          onClick={() => handleOptionClick(opt.value)}
-                          className="flex justify-between items-center p-4 rounded-lg bg-gray-700 text-white cursor-pointer hover:bg-gray-600 transition-colors duration-200"
-                        >
-                          <div>
-                            <span className="font-semibold text-lg">{service?.name}</span>
-                            <p className="text-gray-400 text-sm">R$ ${service?.price} • ${service?.duration}min</p>
-                          </div>
-                          <button className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">
-                            Selecionar
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {m.options && currentStep === 'time' && (
-                  <div className="mt-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      {m.options.map((opt, i) => {
-                        const isAvailable = opt.available;
-                        const conflictCount = opt.count;
-                        
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => isAvailable && handleOptionClick(opt.value)}
-                            disabled={!isAvailable}
-                            className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-300 ${
-                              isAvailable 
-                                ? 'bg-gray-700 hover:bg-blue-600 text-white cursor-pointer' 
-                                : 'bg-gray-800 text-gray-400 cursor-not-allowed opacity-60'
-                            }`}
-                          >
-                            <span className="text-xl font-bold">${opt.label}</span>
-                            <span className="text-xs mt-1">
-                              ${isAvailable ? 'Disponível' : 'Indisponível'}
-                            </span>
-                            {!isAvailable && conflictCount > 0 && (
-                              <span className="text-red-300 text-xs mt-1">
-                                (${conflictCount} agendamento${conflictCount > 1 ? 's' : ''})
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
                   </div>
                 )}
               </div>
             </div>
           ))}
-          {isTyping && <div className="flex justify-start"><div className="bg-gray-700 px-4 py-3 rounded-xl animate-pulse text-white">Digitando...</div></div>}
+          {/* Render DateSelector outside of messages.map when currentStep is 'date' */}
+          {currentStep === 'date' && (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] md:max-w-[75%] p-3 md:p-4 rounded-2xl shadow-sm bg-white text-gray-900 border border-gray-200 rounded-bl-md">
+                <p className="text-sm md:text-base leading-relaxed mb-4">Escolha a data desejada:</p>
+                <DateSelector
+                  selectedDate={formData.date}
+                  onDateSelect={(date) => processUserInput(date)}
+                  availableSlots={availableSlots}
+                />
+              </div>
+            </div>
+          )}
+          {/* Render Time Slots outside of messages.map when currentStep is 'time' */}
+          {currentStep === 'time' && (
+            <div className="flex justify-start">
+              <div className="max-w-[85%] md:max-w-[75%] p-3 md:p-4 rounded-2xl shadow-sm bg-white text-gray-900 border border-gray-200 rounded-bl-md">
+                <p className="text-sm md:text-base leading-relaxed mb-4">Escolha o horário disponível:</p>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {availableSlots.map((slot, slotIdx) => (
+                    <TimeSlotCard
+                      key={slotIdx}
+                      slot={slot}
+                      onSelect={(time) => processUserInput(time)}
+                      isSelected={formData.time === slot.time}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-gray-200 text-gray-900 p-3 md:p-4 rounded-2xl rounded-bl-md max-w-[85%] md:max-w-[75%] shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                  <span className="text-sm md:text-base">Digitando...</span>
+                </div>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
-        {currentStep === 'date' && (
-          <div className="p-4 border-t border-gray-700">
-            <DateSelector
-              selectedDate={formData.date}
-              onDateSelect={(date) => processUserInput(date)}
-              appointments={appointments}
+        <div className="p-3 md:p-4 border-t border-gray-200 bg-white">
+          <div className="flex items-center gap-2 md:gap-3">
+            <input
+              type={currentStep === 'phone' ? 'tel' : 'text'}
+              className="flex-1 p-3 md:p-4 rounded-xl bg-gray-50 text-gray-900 border border-gray-200 focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10 transition-all duration-200 text-sm md:text-base"
+              placeholder={currentStep === 'phone' ? 'Seu telefone com DDD' : 'Digite sua mensagem...'}
+              value={currentInput}
+              onChange={currentStep === 'phone'
+                ? handlePhoneChange
+                : (e) => setCurrentInput(e.target.value)
+              }
+              onKeyPress={handleKeyPress}
             />
-          </div>
-        )}
 
-        {currentStep !== 'date' && currentStep !== 'completed' && (
-          <div className="p-4 border-t border-gray-700">
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={currentInput}
-                onChange={currentStep === 'phone' ? handlePhoneChange : (e) => setCurrentInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Digite sua mensagem..."
-                className="flex-1 px-4 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-800 text-white placeholder-gray-400"
-                disabled={loading}
-              />
-              <button
-                onClick={handleSend}
-                disabled={loading || !currentInput.trim()}
-                className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="h-5 w-5" />
-              </button>
-            </div>
+            <button
+              onClick={handleSend}
+              className="bg-gray-900 text-white p-3 md:p-4 rounded-xl hover:bg-gray-800 active:bg-gray-700 transition-all duration-200 flex items-center justify-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || currentStep === 'date' || currentStep === 'time' || !currentInput.trim()}
+            >
+              <Send className="h-5 w-5" />
+            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

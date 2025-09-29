@@ -17,7 +17,7 @@ export const appointmentService = {
   // Criar novo agendamento
 async create(appointmentData) {
   try {
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), { 
       ...appointmentData,
       status: 'pending',
       createdAt: new Date(),

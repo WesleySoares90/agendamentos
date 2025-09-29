@@ -4,6 +4,12 @@ export const SERVICES = [
     { id: 'facial', name: 'Limpeza de Pele', duration: 75, price: 65 },
     { id: 'manicure', name: 'Manicure', duration: 45, price: 35 }
   ];
+
+  export const PROFESSIONALS = [
+    { id: 'ana', name: 'Ana Silva' },
+    { id: 'bruno', name: 'Bruno Costa' },
+    { id: 'carla', name: 'Carla Dias' },
+  ];  
   
   export const TIME_SLOTS = [
     '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'

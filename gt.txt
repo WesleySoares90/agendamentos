@@ -1,5 +1,5 @@
 git add .
-git commit -m "Nova versão - ajuste na página de agendamento"
+git commit -m "0.0.6 - ajuste geral"
 git push origin master   # ou main, dependendo do nome da sua branch
 
 npm run build
