@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/agendamentos/static/css/main.8dcdc53e.css",
-    "main.js": "/agendamentos/static/js/main.27b1abd6.js",
+    "main.js": "/agendamentos/static/js/main.925058c5.js",
     "static/js/453.b7cc0afd.chunk.js": "/agendamentos/static/js/453.b7cc0afd.chunk.js",
     "static/media/salao-ipanema-1024x576.jpg.webp": "/agendamentos/static/media/salao-ipanema-1024x576.jpg.71d2ff854c2245dcc7d1.webp",
     "index.html": "/agendamentos/index.html",
     "main.8dcdc53e.css.map": "/agendamentos/static/css/main.8dcdc53e.css.map",
-    "main.27b1abd6.js.map": "/agendamentos/static/js/main.27b1abd6.js.map",
+    "main.925058c5.js.map": "/agendamentos/static/js/main.925058c5.js.map",
     "453.b7cc0afd.chunk.js.map": "/agendamentos/static/js/453.b7cc0afd.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.8dcdc53e.css",
-    "static/js/main.27b1abd6.js"
+    "static/js/main.925058c5.js"
   ]
 }
