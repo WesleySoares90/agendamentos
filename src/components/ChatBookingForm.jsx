@@ -25,7 +25,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     time: editingAppointment?.time || ''
   });
   const [isTyping, setIsTyping] = useState(false);
-  const [editingField, setEditingField] = useState(null); // Estado para rastrear o campo em edição
+  const [editingField, setEditingField] = useState(null);
   const messagesEndRef = useRef(null);
   const hasSentWelcome = useRef(false);
 
@@ -34,19 +34,40 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => scrollToBottom(), [messages]);
 
+  // --- NOVA FUNÇÃO: GERADOR DE LINK DO GOOGLE AGENDA ---
+  const generateGoogleCalendarLink = (appointmentData) => {
+    const { service, date, time } = appointmentData;
+    const serviceInfo = SERVICES.find(s => s.id === service);
+
+    if (!serviceInfo) return '#'; // Retorna um link seguro caso o serviço não seja encontrado
+
+    // Converte data e hora para o formato ISO 8601 em UTC
+    const startTime = new Date(`${date}T${time}:00`);
+    const startTimeISO = startTime.toISOString().replace(/-|:|\.\d\d\d/g, "");
+    
+    // Calcula a hora de término
+    const endTime = new Date(startTime.getTime() + serviceInfo.duration * 60000);
+    const endTimeISO = endTime.toISOString().replace(/-|:|\.\d\d\d/g, "");
+
+    // Monta a URL
+    const googleCalendarUrl = new URL("https://www.google.com/calendar/render" );
+    googleCalendarUrl.searchParams.append("action", "TEMPLATE");
+    googleCalendarUrl.searchParams.append("text", `Agendamento: ${serviceInfo.name}`);
+    googleCalendarUrl.searchParams.append("dates", `${startTimeISO}/${endTimeISO}`);
+    googleCalendarUrl.searchParams.append("details", `Seu agendamento para ${serviceInfo.name} está confirmado!`);
+    // Opcional: Adicionar o endereço do local
+    // googleCalendarUrl.searchParams.append("location", "Endereço do seu estabelecimento");
+
+    return googleCalendarUrl.toString();
+  };
+
   const getUserAppointments = (email) => appointments.filter(a => a.email?.toLowerCase() === email?.toLowerCase());
 
   const checkAvailableSlots = async (selectedDate) => {
     if (!selectedDate) return;
     try {
-      const dayAppointments = appointments.filter(apt =>
-        apt.date === selectedDate &&
-        apt.status !== 'cancelled'
-      );
-      const slotsStatus = TIME_SLOTS.map(time => {
-        const conflictingAppointments = dayAppointments.filter(apt => apt.time === time);
-        return { time, available: conflictingAppointments.length === 0 };
-      });
+      const dayAppointments = appointments.filter(apt => apt.date === selectedDate && apt.status !== 'cancelled');
+      const slotsStatus = TIME_SLOTS.map(time => ({ time, available: dayAppointments.filter(apt => apt.time === time).length === 0 }));
       setAvailableSlots(slotsStatus);
       return slotsStatus;
     } catch (error) {
@@ -65,7 +86,6 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
   const addUserMessage = (text) => setMessages(prev => [...prev, { type: 'user', text }]);
 
-  // Função auxiliar para gerar a mensagem de confirmação
   const generateConfirmationMessage = (data) => {
     const serviceInfo = SERVICES.find(s => s.id === data.service);
     return `\nConfirme seus dados:\n\n👤 Nome: ${data.name}\n📧 E-mail: ${data.email}\n📱 Telefone: ${formatPhoneNumber(data.phone)}\n✂️ Serviço: ${serviceInfo?.name}\n💰 Valor: R$ ${serviceInfo?.price}\n📅 Data: ${data.date.split('-').reverse().join('/')}\n🕐 Horário: ${data.time}\n\nDigite "SIM" para confirmar ou "ALTERAR" para modificar.\n`;
@@ -134,6 +154,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   };
 
   const processUserInput = async (input) => {
+    // ... (toda a lógica do switch/case permanece a mesma)
     switch (currentStep) {
       case 'welcome':
         setFormData(prev => ({ ...prev, name: input }));
@@ -254,6 +275,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     }
   };
 
+  // --- FUNÇÃO ATUALIZADA: handleFinalSubmit ---
   const handleFinalSubmit = async () => {
     const finalCheck = await appointmentService.checkTimeConflict(
       formData.date,
@@ -264,7 +286,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     if (finalCheck) {
       addBotMessage("Ops! Este horário acabou de ser reservado. Por favor, escolha outro horário.", null, true);
       setCurrentStep('time');
-      setEditingField('time'); // Permite que o usuário corrija o horário
+      setEditingField('time');
       await checkAvailableSlots(formData.date);
       return;
     }
@@ -272,7 +294,19 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     const result = await onSubmit(formData);
     if (result.success) {
       setCurrentStep('completed');
-      addBotMessage("🎉 Agendamento confirmado com sucesso!");
+      
+      // Gera o link do Google Agenda
+      const calendarLink = generateGoogleCalendarLink(formData);
+
+      // Adiciona a mensagem de sucesso com o botão/link
+      addBotMessage(
+        "🎉 Agendamento confirmado com sucesso!",
+        [{ 
+          value: calendarLink, 
+          name: '📅 Adicionar ao Google Agenda',
+          isLink: true // Propriedade para identificar que é um link
+        }]
+      );
     } else {
       addBotMessage(`Ocorreu um erro: ${result.error || 'Tente novamente.'}`, null, true);
     }
@@ -306,11 +340,11 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     setCurrentStep('email');
     setMessages([]);
     hasSentWelcome.current = true;
-
     const selectedService = SERVICES.find(s => s.id === serviceId);
     addBotMessage(`Você selecionou: ${selectedService.name}. Agora, preciso do seu e-mail para continuar o agendamento.`);
   };
 
+  // ... (Componentes Header, MobileMenu, ServiceCard, TimeSlotCard, renderServices, renderReservations permanecem os mesmos)
   const Header = ({ title, showBackButton = false }) => (
     <div className="bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-lg flex justify-between items-center sticky top-0 z-10 shadow-sm">
       <div className="flex items-center gap-3">
@@ -469,13 +503,34 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             <div key={idx} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] md:max-w-[75%] p-3 md:p-4 rounded-2xl shadow-sm ${m.type === 'user' ? 'bg-gray-900 text-white rounded-br-md' : m.isSystem ? 'bg-red-100 text-red-800 border border-red-200 rounded-bl-md' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'}`}>
                 <p className="text-sm md:text-base leading-relaxed whitespace-pre-line">{m.text}</p>
+                {/* --- RENDERIZAÇÃO ATUALIZADA DAS OPÇÕES --- */}
                 {m.options && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {m.options.map((option, optIdx) => (
-                      <button key={optIdx} onClick={() => handleOptionClick(option.value)} className={`px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${option.available === false ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'bg-gray-900 hover:bg-gray-800 text-white'}`} disabled={option.available === false}>
-                        {option.label || option.name}
-                      </button>
-                    ))}
+                    {m.options.map((option, optIdx) => {
+                      if (option.isLink) {
+                        return (
+                          <a
+                            key={optIdx}
+                            href={option.value}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                          >
+                            {option.name}
+                          </a>
+                        );
+                      }
+                      return (
+                        <button
+                          key={optIdx}
+                          onClick={() => handleOptionClick(option.value)}
+                          className={`px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 ${option.available === false ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200' : 'bg-gray-900 hover:bg-gray-800 text-white'}`}
+                          disabled={option.available === false}
+                        >
+                          {option.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
