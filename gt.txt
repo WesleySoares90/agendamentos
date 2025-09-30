@@ -1,5 +1,5 @@
 git add .
-git commit -m "0.1.0 - ajuste geral"
+git commit -m "0.1.1 - ajuste geral"
 git push origin master   # ou main, dependendo do nome da sua branch
 
 npm run build

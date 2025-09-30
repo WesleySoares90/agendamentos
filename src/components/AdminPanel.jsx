@@ -124,9 +124,14 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-blue-50 p-6 rounded-lg">
+         {/* Estatísticas */}
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <button
+            onClick={() => setSelectedFilter('all')}
+            className={`bg-blue-50 p-6 rounded-lg transition-all hover:shadow-md hover:scale-105 text-left ${
+              selectedFilter === 'all' ? 'ring-2 ring-blue-600' : ''
+            }`}
+          >
             <div className="flex items-center">
               <BarChart3 className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
@@ -134,9 +139,14 @@ const AdminPanel = ({
                 <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-yellow-50 p-6 rounded-lg">
+          <button
+            onClick={() => setSelectedFilter('pending')}
+            className={`bg-yellow-50 p-6 rounded-lg transition-all hover:shadow-md hover:scale-105 text-left ${
+              selectedFilter === 'pending' ? 'ring-2 ring-yellow-600' : ''
+            }`}
+          >
             <div className="flex items-center">
               <Clock className="h-8 w-8 text-yellow-600" />
               <div className="ml-4">
@@ -144,9 +154,14 @@ const AdminPanel = ({
                 <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-green-50 p-6 rounded-lg">
+          <button
+            onClick={() => setSelectedFilter('approved')}
+            className={`bg-green-50 p-6 rounded-lg transition-all hover:shadow-md hover:scale-105 text-left ${
+              selectedFilter === 'approved' ? 'ring-2 ring-green-600' : ''
+            }`}
+          >
             <div className="flex items-center">
               <CheckCircle className="h-8 w-8 text-green-600" />
               <div className="ml-4">
@@ -154,9 +169,14 @@ const AdminPanel = ({
                 <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-red-50 p-6 rounded-lg">
+          <button
+            onClick={() => setSelectedFilter('cancelled')}
+            className={`bg-red-50 p-6 rounded-lg transition-all hover:shadow-md hover:scale-105 text-left ${
+              selectedFilter === 'cancelled' ? 'ring-2 ring-red-600' : ''
+            }`}
+          >
             <div className="flex items-center">
               <XCircle className="h-8 w-8 text-red-600" />
               <div className="ml-4">
@@ -164,9 +184,9 @@ const AdminPanel = ({
                 <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
               </div>
             </div>
-          </div>
+          </button>
         </div>
-
+        
         {/* Filtros */}
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4 mb-6">
           <div className="flex items-center gap-2 w-full sm:w-auto">
