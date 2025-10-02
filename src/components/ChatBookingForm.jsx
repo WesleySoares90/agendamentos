@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar } from 'lucide-react';
+// CORREÇÃO: Adicionados os ícones 'User', 'Send', 'Eye', 'Edit', 'ArrowLeft', 'Menu', 'X' que estavam faltando ou foram removidos.
+import { User, Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar } from 'lucide-react'; 
 import { SERVICES, TIME_SLOTS } from '../utils/constants';
 import { useAppointments } from '../hooks/useAppointments';
 import { appointmentService } from '../services/appointmentService';
@@ -16,11 +17,15 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const [userAppointments, setUserAppointments] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  const [professionals, setProfessionals] = useState([]);
+
   const [formData, setFormData] = useState({
     name: editingAppointment?.name || '',
     email: editingAppointment?.email || '',
     phone: editingAppointment?.phone || '',
     service: editingAppointment?.service || '',
+    professionalId: editingAppointment?.professionalId || '',
     date: editingAppointment?.date || '',
     time: editingAppointment?.time || ''
   });
@@ -31,43 +36,63 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
   const { appointments } = useAppointments();
 
+  useEffect(() => {
+    const fetchProfessionals = async () => {
+      try {
+        const profs = await appointmentService.getAllProfessionals();
+    
+        const activeProfessionals = profs.filter(p => p && p.id && p.name);
+        
+        setProfessionals(activeProfessionals);
+  
+      } catch (error) {
+        console.error("Erro ao buscar profissionais no chat:", error);
+      }
+    };
+  
+    fetchProfessionals();
+  
+  }, []);
+
+
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => scrollToBottom(), [messages]);
 
-  // --- NOVA FUNÇÃO: GERADOR DE LINK DO GOOGLE AGENDA ---
   const generateGoogleCalendarLink = (appointmentData) => {
     const { service, date, time } = appointmentData;
     const serviceInfo = SERVICES.find(s => s.id === service);
 
-    if (!serviceInfo) return '#'; // Retorna um link seguro caso o serviço não seja encontrado
+    if (!serviceInfo) return '#';
 
-    // Converte data e hora para o formato ISO 8601 em UTC
     const startTime = new Date(`${date}T${time}:00`);
     const startTimeISO = startTime.toISOString().replace(/-|:|\.\d\d\d/g, "");
     
-    // Calcula a hora de término
     const endTime = new Date(startTime.getTime() + serviceInfo.duration * 60000);
     const endTimeISO = endTime.toISOString().replace(/-|:|\.\d\d\d/g, "");
 
-    // Monta a URL
     const googleCalendarUrl = new URL("https://www.google.com/calendar/render" );
     googleCalendarUrl.searchParams.append("action", "TEMPLATE");
     googleCalendarUrl.searchParams.append("text", `Agendamento: ${serviceInfo.name}`);
     googleCalendarUrl.searchParams.append("dates", `${startTimeISO}/${endTimeISO}`);
     googleCalendarUrl.searchParams.append("details", `Seu agendamento para ${serviceInfo.name} está confirmado!`);
-    // Opcional: Adicionar o endereço do local
-    // googleCalendarUrl.searchParams.append("location", "Endereço do seu estabelecimento");
 
     return googleCalendarUrl.toString();
   };
 
   const getUserAppointments = (email) => appointments.filter(a => a.email?.toLowerCase() === email?.toLowerCase());
 
-  const checkAvailableSlots = async (selectedDate) => {
-    if (!selectedDate) return;
+  const checkAvailableSlots = async (selectedDate, professionalId) => {
+    if (!selectedDate || !professionalId) return;
     try {
-      const dayAppointments = appointments.filter(apt => apt.date === selectedDate && apt.status !== 'cancelled');
-      const slotsStatus = TIME_SLOTS.map(time => ({ time, available: dayAppointments.filter(apt => apt.time === time).length === 0 }));
+      const dayAppointments = appointments.filter(apt => 
+        apt.date === selectedDate && 
+        apt.professionalId === professionalId &&
+        apt.status !== 'cancelled'
+      );
+      const slotsStatus = TIME_SLOTS.map(time => ({ 
+        time, 
+        available: dayAppointments.filter(apt => apt.time === time).length === 0 
+      }));
       setAvailableSlots(slotsStatus);
       return slotsStatus;
     } catch (error) {
@@ -88,11 +113,12 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
   const generateConfirmationMessage = (data) => {
     const serviceInfo = SERVICES.find(s => s.id === data.service);
-    return `\nConfirme seus dados:\n\n👤 Nome: ${data.name}\n📧 E-mail: ${data.email}\n📱 Telefone: ${formatPhoneNumber(data.phone)}\n✂️ Serviço: ${serviceInfo?.name}\n💰 Valor: R$ ${serviceInfo?.price}\n📅 Data: ${data.date.split('-').reverse().join('/')}\n🕐 Horário: ${data.time}\n\nDigite "SIM" para confirmar ou "ALTERAR" para modificar.\n`;
+    const professionalInfo = professionals.find(p => p.id === data.professionalId);
+    return `\nConfirme seus dados:\n\n👤 Nome: ${data.name}\n📧 E-mail: ${data.email}\n📱 Telefone: ${formatPhoneNumber(data.phone)}\n✂️ Serviço: ${serviceInfo?.name}\n💇 Profissional: ${professionalInfo?.name}\n💰 Valor: R$ ${serviceInfo?.price}\n📅 Data: ${data.date.split('-').reverse().join('/')}\n🕐 Horário: ${data.time}\n\nDigite "SIM" para confirmar ou "ALTERAR" para modificar.\n`;
   };
 
   useEffect(() => {
-    if (hasSentWelcome.current) return;
+    if (hasSentWelcome.current || professionals.length === 0) return;
     hasSentWelcome.current = true;
 
     if (editingAppointment) {
@@ -106,7 +132,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         setTimeout(() => addBotMessage("Qual o seu nome? Por favor, escreva seu nome e sobrenome."), 1000);
       }, 500);
     }
-  }, [editingAppointment]);
+  }, [editingAppointment, professionals]);
 
   const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
   const validatePhone = (phone) => phone.replace(/\D/g, '').length >= 10;
@@ -130,8 +156,17 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       setTimeout(() => addBotMessage(`Perfeito, ${formData.name}! Agora preciso do seu e-mail.`), 500);
       return;
     }
-    const selectedService = SERVICES.find(s => s.id === value);
-    addUserMessage(selectedService?.name || value);
+    
+    let messageText = value;
+    if (currentStep === 'service') {
+        const selectedService = SERVICES.find(s => s.id === value);
+        messageText = selectedService?.name || value;
+    } else if (currentStep === 'professional') {
+        const selectedProf = professionals.find(p => p.id === value);
+        messageText = selectedProf?.name || value;
+    }
+
+    addUserMessage(messageText);
     processUserInput(value);
   };
 
@@ -154,7 +189,6 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   };
 
   const processUserInput = async (input) => {
-    // ... (toda a lógica do switch/case permanece a mesma)
     switch (currentStep) {
       case 'welcome':
         setFormData(prev => ({ ...prev, name: input }));
@@ -177,10 +211,10 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
       case 'phone':
         if (!validatePhone(input)) return addBotMessage("Digite um telefone válido com DDD.", null, true);
-        setFormData(prev => ({ ...prev, phone: input }));
+        setFormData(prev => ({ ...prev, phone: input.replace(/\D/g, '') }));
         if (formData.service) {
-          setCurrentStep('date');
-          addBotMessage("Agora, escolha a data desejada:");
+          setCurrentStep('professional');
+          addBotMessage("Agora, escolha o profissional:", professionals.map(p => ({ value: p.id, name: p.name })));
         } else {
           setCurrentStep('service');
           addBotMessage("Agora, escolha o serviço desejado:", SERVICES.map(s => ({ value: s.id, name: s.name, price: s.price, duration: s.duration })));
@@ -200,8 +234,26 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           addBotMessage(`Serviço alterado para: ${selectedService.name}.`);
           setTimeout(() => addBotMessage(generateConfirmationMessage(updatedDataService)), 500);
         } else {
-          setCurrentStep('date');
-          addBotMessage(`Você selecionou: ${selectedService.name}. Agora, escolha a data desejada.`);
+          setCurrentStep('professional');
+          addBotMessage(`Você selecionou: ${selectedService.name}. Agora, escolha o profissional:`, professionals.map(p => ({ value: p.id, name: p.name })));
+        }
+        break;
+
+      case 'professional':
+        const selectedProfessional = professionals.find(p => p.id === input);
+        if (!selectedProfessional) return addBotMessage("Selecione um profissional válido.", null, true);
+
+        const updatedDataProf = { ...formData, professionalId: input };
+        setFormData(updatedDataProf);
+
+        if (editingField) {
+            setEditingField(null);
+            setCurrentStep('confirmation');
+            addBotMessage(`Profissional alterado para: ${selectedProfessional.name}.`);
+            setTimeout(() => addBotMessage(generateConfirmationMessage(updatedDataProf)), 500);
+        } else {
+            setCurrentStep('date');
+            addBotMessage(`Você escolheu ${selectedProfessional.name}. Agora, escolha a data desejada.`);
         }
         break;
 
@@ -212,12 +264,12 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         
         if (editingField) {
           setEditingField(null);
-          setCurrentStep('time'); // Pede para escolher o horário na nova data
+          setCurrentStep('time');
           addBotMessage(`Data alterada para: ${input.split('-').reverse().join('/')}. Agora, escolha um novo horário.`);
-          await checkAvailableSlots(input);
+          await checkAvailableSlots(input, formData.professionalId);
         } else {
           setCurrentStep('time');
-          await checkAvailableSlots(input);
+          await checkAvailableSlots(input, formData.professionalId);
         }
         break;
 
@@ -227,9 +279,8 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         const updatedDataTime = { ...formData, time: input };
         setFormData(updatedDataTime);
 
-        // Seja editando ou criando, o próximo passo é a confirmação
         setCurrentStep('confirmation');
-        setEditingField(null); // Limpa o campo de edição
+        setEditingField(null);
         addBotMessage(`Horário selecionado: ${input}.`);
         setTimeout(() => addBotMessage(generateConfirmationMessage(updatedDataTime)), 500);
         break;
@@ -240,6 +291,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           setCurrentStep('ask_edit_field');
           const editOptions = [
             { value: 'service', name: 'Serviço' },
+            { value: 'professional', name: 'Profissional' },
             { value: 'date', name: 'Data e Horário' },
             { value: 'cancel', name: 'Recomeçar' }
           ];
@@ -252,7 +304,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       case 'ask_edit_field':
         if (input === 'cancel') {
           setCurrentStep('welcome');
-          setFormData({ name: '', email: '', phone: '', service: '', date: '', time: '' });
+          setFormData({ name: '', email: '', phone: '', service: '', professionalId: '', date: '', time: '' });
           setMessages([]);
           hasSentWelcome.current = false;
           setTimeout(() => addBotMessage("Ok, vamos recomeçar. Qual o seu nome?"), 500);
@@ -264,6 +316,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
         const fieldMap = {
           service: "Ok, escolha o novo serviço.",
+          professional: "Ok, escolha o novo profissional.",
           date: "Ok, escolha a nova data.",
         };
         addBotMessage(fieldMap[input] || "Ok, vamos alterar isso.");
@@ -271,23 +324,26 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         if (input === 'service') {
           addBotMessage("Escolha o novo serviço:", SERVICES.map(s => ({ value: s.id, name: s.name, price: s.price, duration: s.duration })));
         }
+        if (input === 'professional') {
+          addBotMessage("Escolha o novo profissional:", professionals.map(p => ({ value: p.id, name: p.name })));
+        }
         break;
     }
   };
 
-  // --- FUNÇÃO ATUALIZADA: handleFinalSubmit ---
   const handleFinalSubmit = async () => {
     const finalCheck = await appointmentService.checkTimeConflict(
       formData.date,
       formData.time,
+      formData.professionalId,
       editingAppointment?.id
     );
 
     if (finalCheck) {
-      addBotMessage("Ops! Este horário acabou de ser reservado. Por favor, escolha outro horário.", null, true);
+      addBotMessage("Ops! Este horário acabou de ser reservado com este profissional. Por favor, escolha outro horário.", null, true);
       setCurrentStep('time');
       setEditingField('time');
-      await checkAvailableSlots(formData.date);
+      await checkAvailableSlots(formData.date, formData.professionalId);
       return;
     }
 
@@ -295,16 +351,14 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     if (result.success) {
       setCurrentStep('completed');
       
-      // Gera o link do Google Agenda
       const calendarLink = generateGoogleCalendarLink(formData);
 
-      // Adiciona a mensagem de sucesso com o botão/link
       addBotMessage(
         "🎉 Agendamento confirmado com sucesso!",
         [{ 
           value: calendarLink, 
           name: '📅 Adicionar ao Google Agenda',
-          isLink: true // Propriedade para identificar que é um link
+          isLink: true
         }]
       );
     } else {
@@ -312,6 +366,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     }
   };
 
+  // CORREÇÃO: Adicionadas as funções que estavam faltando.
   const handleCheckReservations = () => {
     const reservations = getUserAppointments(userEmail || formData.email);
     setUserAppointments(reservations);
@@ -344,7 +399,6 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     addBotMessage(`Você selecionou: ${selectedService.name}. Agora, preciso do seu e-mail para continuar o agendamento.`);
   };
 
-  // ... (Componentes Header, MobileMenu, ServiceCard, TimeSlotCard, renderServices, renderReservations permanecem os mesmos)
   const Header = ({ title, showBackButton = false }) => (
     <div className="bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-lg flex justify-between items-center sticky top-0 z-10 shadow-sm">
       <div className="flex items-center gap-3">
@@ -503,7 +557,6 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             <div key={idx} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] md:max-w-[75%] p-3 md:p-4 rounded-2xl shadow-sm ${m.type === 'user' ? 'bg-gray-900 text-white rounded-br-md' : m.isSystem ? 'bg-red-100 text-red-800 border border-red-200 rounded-bl-md' : 'bg-white text-gray-900 border border-gray-200 rounded-bl-md'}`}>
                 <p className="text-sm md:text-base leading-relaxed whitespace-pre-line">{m.text}</p>
-                {/* --- RENDERIZAÇÃO ATUALIZADA DAS OPÇÕES --- */}
                 {m.options && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {m.options.map((option, optIdx) => {
@@ -577,14 +630,14 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
               className="flex-1 p-3 md:p-4 rounded-xl bg-gray-50 text-gray-900 border border-gray-200 focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10 transition-all duration-200 text-sm md:text-base"
               placeholder={currentStep === 'phone' ? 'Seu telefone com DDD' : 'Digite sua mensagem...'}
               value={currentInput}
-              onChange={currentStep === 'phone' ? handlePhoneChange : (e) => setCurrentInput(e.target.value)}
+             onChange={currentStep === 'phone' ? handlePhoneChange : (e) => setCurrentInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              disabled={loading || currentStep === 'date' || currentStep === 'time'}
+              disabled={loading || currentStep === 'date' || currentStep === 'time' || currentStep === 'completed'}
             />
             <button
               onClick={handleSend}
               className="bg-gray-900 text-white p-3 md:p-4 rounded-xl hover:bg-gray-800 active:bg-gray-700 transition-all duration-200 flex items-center justify-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading || currentStep === 'date' || currentStep === 'time' || !currentInput.trim()}
+              disabled={loading || currentStep === 'date' || currentStep === 'time' || currentStep === 'completed' || !currentInput.trim()}
             >
               <Send className="h-5 w-5" />
             </button>

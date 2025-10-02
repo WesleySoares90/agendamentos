@@ -6,6 +6,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 // opcional (se quiser usar Analytics no navegador com https)
 import { getAnalytics } from "firebase/analytics";
+import { getMessaging } from 'firebase/messaging';
 
 // Configuração do Firebase
 const firebaseConfig = {
@@ -18,12 +19,9 @@ const firebaseConfig = {
   measurementId: "G-J6YLGY88R3"
 };
 
-// Inicializa Firebase
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 
-const auth = getAuth(app);
-const db = getFirestore(app);
-const analytics = getAnalytics(app);
-
-// Exporte os serviços para usar em outros arquivos
-export { app, auth, db }; // <-- Corrigido aqui
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const analytics = getAnalytics(app);
+export const messaging = getMessaging(app);

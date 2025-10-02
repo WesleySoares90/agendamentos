@@ -1,8 +1,11 @@
+// src/App.js
+
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { useAppointments } from './hooks/useAppointments';
-import BookingForm from './components/BookingForm';
+import { appointmentService } from './services/appointmentService';
+import ChatBookingForm from './components/ChatBookingForm'; // Alterado de BookingForm para ChatBookingForm
 import LoginForm from './components/LoginForm';
 import AdminPanel from './components/AdminPanel';
 import { Shield } from 'lucide-react';
@@ -13,6 +16,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [editingAppointment, setEditingAppointment] = useState(null);
+  const [professionals, setProfessionals] = useState([]);
 
   const {
     appointments,
@@ -24,7 +28,15 @@ function App() {
     updateAppointment
   } = useAppointments();
 
-  // Monitorar autenticação
+  const fetchProfessionals = async () => {
+    try {
+      const profsData = await appointmentService.getAllProfessionals();
+      setProfessionals(profsData);
+    } catch (error) {
+      console.error("Erro ao carregar profissionais:", error);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
@@ -33,17 +45,16 @@ function App() {
         setCurrentView('admin');
       }
     });
-
+    fetchProfessionals();
     return () => unsubscribe();
   }, []);
 
-  // Handlers
   const handleBookingSubmit = async (formData) => {
     if (editingAppointment) {
       const result = await updateAppointment(editingAppointment.id, formData);
       if (result.success) {
         setEditingAppointment(null);
-        setCurrentView('admin');
+        setCurrentView('booking'); // Volta para o chat após editar
       }
       return result;
     } else {
@@ -51,80 +62,62 @@ function App() {
     }
   };
 
-  const handleLoginSuccess = () => {
-    setCurrentView('admin');
-  };
-
+  const handleLoginSuccess = () => setCurrentView('admin');
   const handleEditAppointment = (appointment) => {
     setEditingAppointment(appointment);
     setCurrentView('booking');
   };
-
   const handleBackToBooking = () => {
     setEditingAppointment(null);
     setCurrentView('booking');
   };
 
   if (authLoading) {
-    return (
-      <div className="container">
-        <div className="card text-center">
-          <p>Carregando...</p>
-        </div>
-      </div>
-    );
+    return <div className="flex justify-center items-center min-h-screen"><p>Carregando...</p></div>;
   }
 
-  // View: Login Admin
   if (currentView === 'login') {
-    return (
-      <div style={{ minHeight: '100vh', padding: '2rem 1rem' }}>
-        <LoginForm
-          onSuccess={handleLoginSuccess}
-          onBack={handleBackToBooking}
-        />
-      </div>
-    );
+    return <LoginForm onSuccess={handleLoginSuccess} onBack={handleBackToBooking} />;
   }
 
-  // View: Admin Panel
   if (currentView === 'admin' && user) {
     return (
-      <div style={{ minHeight: '100vh', padding: '2rem 1rem' }}>
-        <AdminPanel
-          appointments={appointments}
-          loading={loading}
-          onUpdateStatus={updateAppointmentStatus}
-          onEditAppointment={handleEditAppointment}
-          onRefresh={fetchAppointments}
-        />
-      </div>
+      <AdminPanel
+        appointments={appointments}
+        loading={loading}
+        onUpdateStatus={updateAppointmentStatus}
+        onEditAppointment={handleEditAppointment}
+        onRefresh={fetchAppointments}
+        professionals={professionals}
+        onProfessionalChange={fetchProfessionals}
+      />
     );
   }
 
-  // View: Booking Form (padrão)
   return (
     <>
-      <button
-        onClick={() => setCurrentView('login')}
-        className="fixed top-2 right-2 md:top-4 md:right-4 z-[9999] bg-white/90 backdrop-blur-sm px-2 py-1.5 md:px-4 md:py-2 rounded-lg shadow-lg hover:bg-white transition-all flex items-center gap-1.5 md:gap-2 text-gray-900 font-medium border border-gray-200 text-xs md:text-sm"
-      >
-        <Shield size={14} className="md:w-4 md:h-4" />
-        <span className="hidden sm:inline">Acesso Administrativo</span>
-        <span className="sm:hidden">Admin</span>
-      </button>
-  
-      <BookingForm
+      {currentView !== 'admin' && (
+        <div className="absolute top-4 right-4 z-50">
+          <button
+            onClick={() => setCurrentView(user ? 'admin' : 'login')}
+            className="bg-gray-700 text-white p-3 rounded-full hover:bg-gray-800 transition-colors shadow-lg"
+            aria-label="Acessar painel administrativo"
+          >
+            <Shield className="h-6 w-6" />
+          </button>
+        </div>
+      )}
+
+      <ChatBookingForm
         onSubmit={handleBookingSubmit}
         loading={loading}
         editingAppointment={editingAppointment}
+        professionals={professionals} // <-- PROP ADICIONADA AQUI
       />
-  
+
       {error && (
-        <div className="container" style={{ marginTop: '1rem' }}>
-          <div className="alert alert-error">
-            ⚠️ {error}
-          </div>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md p-4 bg-red-100 text-red-700 rounded-md text-center shadow-lg">
+          <p><strong>Erro:</strong> {error}</p>
         </div>
       )}
     </>

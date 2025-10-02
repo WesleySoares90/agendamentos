@@ -7,7 +7,6 @@ export const useAppointments = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Carregar agendamentos
   const fetchAppointments = async () => {
     setLoading(true);
     setError(null);
@@ -22,27 +21,25 @@ export const useAppointments = () => {
     }
   };
 
-  // Criar agendamento
   const createAppointment = async (appointmentData) => {
     setLoading(true);
     setError(null);
     try {
-      // Verificar conflito
+      // **ATUALIZADO: Passa o professionalId para a verificação de conflito**
       const hasConflict = await appointmentService.checkTimeConflict(
         appointmentData.date, 
-        appointmentData.time
+        appointmentData.time,
+        appointmentData.professionalId 
       );
       
       if (hasConflict) {
-        throw new Error('Este horário já está ocupado');
+        throw new Error('Este horário já está ocupado com o profissional selecionado.');
       }
 
       const id = await appointmentService.create(appointmentData);
       
-      // Enviar e-mail de confirmação
       await emailService.sendConfirmation({ ...appointmentData, id });
       
-      // Recarregar lista
       await fetchAppointments();
       
       return { success: true, id };
@@ -54,20 +51,17 @@ export const useAppointments = () => {
     }
   };
 
-  // Atualizar status
   const updateAppointmentStatus = async (id, status) => {
     setLoading(true);
     setError(null);
     try {
       await appointmentService.update(id, { status });
       
-      // Encontrar agendamento para enviar e-mail
       const appointment = appointments.find(apt => apt.id === id);
       if (appointment) {
         await emailService.sendStatusUpdate(appointment, status);
       }
       
-      // Recarregar lista
       await fetchAppointments();
       
       return { success: true };
@@ -79,25 +73,26 @@ export const useAppointments = () => {
     }
   };
 
-  // Atualizar agendamento
   const updateAppointment = async (id, updateData) => {
     setLoading(true);
     setError(null);
     try {
-      // Verificar conflito se mudou data/hora
-      if (updateData.date || updateData.time) {
+      if (updateData.date || updateData.time || updateData.professionalId) {
         const appointment = appointments.find(apt => apt.id === id);
         const newDate = updateData.date || appointment.date;
         const newTime = updateData.time || appointment.time;
-        
+        const professionalId = updateData.professionalId || appointment.professionalId;
+
+        // **ATUALIZADO: Passa o professionalId para a verificação de conflito**
         const hasConflict = await appointmentService.checkTimeConflict(
           newDate, 
           newTime, 
-          id
+          professionalId, 
+          id // Exclui o próprio agendamento da verificação de conflito
         );
         
         if (hasConflict) {
-          throw new Error('Este horário já está ocupado');
+          throw new Error('Este horário já está ocupado com o profissional selecionado');
         }
       }
 
@@ -113,7 +108,6 @@ export const useAppointments = () => {
     }
   };
 
-  // Carregar dados na inicialização
   useEffect(() => {
     fetchAppointments();
   }, []);

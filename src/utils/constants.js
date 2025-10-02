@@ -6,10 +6,23 @@ export const SERVICES = [
   ];
 
   export const PROFESSIONALS = [
-    { id: 'ana', name: 'Ana Silva' },
-    { id: 'bruno', name: 'Bruno Costa' },
-    { id: 'carla', name: 'Carla Dias' },
-  ];  
+    { 
+      id: 'prof1', 
+      name: 'João Silva', 
+      email: 'joao@exemplo.com',
+      phone: '22999887766',
+      specialty: 'Corte e Barba',
+      available: true
+    },
+    { 
+      id: 'prof2', 
+      name: 'Maria Santos', 
+      email: 'maria@exemplo.com',
+      phone: '22988776655',
+      specialty: 'Coloração e Hidratação',
+      available: true
+    }
+  ];
   
   export const TIME_SLOTS = [
     '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'
