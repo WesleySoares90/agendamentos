@@ -500,6 +500,7 @@ const AdminPanel = ({
       );
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
+      alert('Não foi possível atualizar o status. Verifique sua conexão.');
     } finally {
       setUpdatingStatus(prev => {
         const updated = { ...prev };
