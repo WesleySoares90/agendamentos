@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 // CORREÇÃO: Adicionados os ícones 'User', 'Send', 'Eye', 'Edit', 'ArrowLeft', 'Menu', 'X' que estavam faltando ou foram removidos.
 import { User, Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar } from 'lucide-react'; 
-import { SERVICES, TIME_SLOTS } from '../utils/constants';
+import { TIME_SLOTS } from '../utils/constants';
 import { useAppointments } from '../hooks/useAppointments';
 import { appointmentService } from '../services/appointmentService';
 import DateSelector from './DateSelector';
@@ -33,8 +33,23 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const [editingField, setEditingField] = useState(null);
   const messagesEndRef = useRef(null);
   const hasSentWelcome = useRef(false);
+  const [services, setServices] = useState([]);
 
   const { appointments } = useAppointments();
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const servs = await appointmentService.getAllServices();
+        const activeServices = servs.filter(s => s && s.id && s.name);
+        setServices(activeServices);
+      } catch (error) {
+        console.error("Erro ao buscar serviços no chat:", error);
+      }
+    };
+  
+    fetchServices();
+  }, []);
 
   useEffect(() => {
     const fetchProfessionals = async () => {
@@ -60,7 +75,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
   const generateGoogleCalendarLink = (appointmentData) => {
     const { service, date, time } = appointmentData;
-    const serviceInfo = SERVICES.find(s => s.id === service);
+    const serviceInfo = services.find(s => s.id === service);
 
     if (!serviceInfo) return '#';
 
@@ -112,15 +127,18 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const addUserMessage = (text) => setMessages(prev => [...prev, { type: 'user', text }]);
 
   const generateConfirmationMessage = (data) => {
-    const serviceInfo = SERVICES.find(s => s.id === data.service);
+    // Busca serviço do estado dinâmico ao invés de SERVICES
+    const serviceInfo = services.find(s => s.id === data.service);
     const professionalInfo = professionals.find(p => p.id === data.professionalId);
     return `\nConfirme seus dados:\n\n👤 Nome: ${data.name}\n📧 E-mail: ${data.email}\n📱 Telefone: ${formatPhoneNumber(data.phone)}\n✂️ Serviço: ${serviceInfo?.name}\n💇 Profissional: ${professionalInfo?.name}\n💰 Valor: R$ ${serviceInfo?.price}\n📅 Data: ${data.date.split('-').reverse().join('/')}\n🕐 Horário: ${data.time}\n\nDigite "SIM" para confirmar ou "ALTERAR" para modificar.\n`;
   };
+  
 
   useEffect(() => {
-    if (hasSentWelcome.current || professionals.length === 0) return;
+    // Espera carregar tanto profissionais quanto serviços
+    if (hasSentWelcome.current || professionals.length === 0 || services.length === 0) return;
     hasSentWelcome.current = true;
-
+  
     if (editingAppointment) {
       setFormData(editingAppointment);
       setCurrentStep('confirmation');
@@ -132,8 +150,8 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         setTimeout(() => addBotMessage("Qual o seu nome? Por favor, escreva seu nome e sobrenome."), 1000);
       }, 500);
     }
-  }, [editingAppointment, professionals]);
-
+  }, [editingAppointment, professionals, services]); 
+  
   const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
   const validatePhone = (phone) => phone.replace(/\D/g, '').length >= 10;
 
@@ -156,10 +174,9 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       setTimeout(() => addBotMessage(`Perfeito, ${formData.name}! Agora preciso do seu e-mail.`), 500);
       return;
     }
-    
     let messageText = value;
     if (currentStep === 'service') {
-        const selectedService = SERVICES.find(s => s.id === value);
+      const selectedService = services.find(s => s.id === value);
         messageText = selectedService?.name || value;
     } else if (currentStep === 'professional') {
         const selectedProf = professionals.find(p => p.id === value);
@@ -217,12 +234,12 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           addBotMessage("Agora, escolha o profissional:", professionals.map(p => ({ value: p.id, name: p.name })));
         } else {
           setCurrentStep('service');
-          addBotMessage("Agora, escolha o serviço desejado:", SERVICES.map(s => ({ value: s.id, name: s.name, price: s.price, duration: s.duration })));
+          addBotMessage("Agora, escolha o serviço desejado:", services.map(s => ({ value: s.id, name: s.name, price: s.price, duration: s.duration })));
         }
         break;
 
       case 'service':
-        const selectedService = SERVICES.find(s => s.id === input);
+        const selectedService = services.find(s => s.id === input);
         if (!selectedService) return addBotMessage("Selecione um serviço válido.", null, true);
         
         const updatedDataService = { ...formData, service: input };
@@ -301,15 +318,15 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         addBotMessage("Digite 'SIM' para confirmar ou 'ALTERAR' para modificar.", null, true);
         break;
 
-      case 'ask_edit_field':
-        if (input === 'cancel') {
-          setCurrentStep('welcome');
-          setFormData({ name: '', email: '', phone: '', service: '', professionalId: '', date: '', time: '' });
-          setMessages([]);
-          hasSentWelcome.current = false;
-          setTimeout(() => addBotMessage("Ok, vamos recomeçar. Qual o seu nome?"), 500);
-          return;
-        }
+        case 'ask_edit_field':
+          if (input === 'cancel') {
+            setCurrentStep('welcome');
+            setFormData({ name: '', email: '', phone: '', service: '', professionalId: '', date: '', time: '' });
+            setMessages([]);
+            hasSentWelcome.current = false;
+            setTimeout(() => addBotMessage("Ok, vamos recomeçar. Qual o seu nome?"), 500);
+            return;
+          }
         
         setEditingField(input);
         setCurrentStep(input);
@@ -322,7 +339,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         addBotMessage(fieldMap[input] || "Ok, vamos alterar isso.");
         
         if (input === 'service') {
-          addBotMessage("Escolha o novo serviço:", SERVICES.map(s => ({ value: s.id, name: s.name, price: s.price, duration: s.duration })));
+          addBotMessage("Escolha o novo serviço:", services.map(s => ({ value: s.id, name: s.name, price: s.price, duration: s.duration })));
         }
         if (input === 'professional') {
           addBotMessage("Escolha o novo profissional:", professionals.map(p => ({ value: p.id, name: p.name })));
@@ -395,9 +412,9 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     setCurrentStep('email');
     setMessages([]);
     hasSentWelcome.current = true;
-    const selectedService = SERVICES.find(s => s.id === serviceId);
-    addBotMessage(`Você selecionou: ${selectedService.name}. Agora, preciso do seu e-mail para continuar o agendamento.`);
-  };
+    const selectedService = services.find(s => s.id === serviceId); 
+  addBotMessage(`Você selecionou: ${selectedService.name}. Agora, preciso do seu e-mail para continuar o agendamento.`);
+};
 
   const Header = ({ title, showBackButton = false }) => (
     <div className="bg-white border-b border-gray-200 p-4 md:p-6 rounded-t-lg flex justify-between items-center sticky top-0 z-10 shadow-sm">
@@ -501,12 +518,14 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       <MobileMenu />
       <div className="p-4 md:p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-          {SERVICES.map(service => (<ServiceCard key={service.id} service={service} onSelect={handleServiceSelect} />))}
+          
+          {services.map(service => (
+            <ServiceCard key={service.id} service={service} onSelect={handleServiceSelect} />
+          ))}
         </div>
       </div>
     </div>
   );
-
   const renderReservations = () => (
     <div className="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-sm overflow-hidden">
       <Header title="Minhas Reservas" showBackButton={true} />
@@ -514,26 +533,46 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       <div className="p-4 md:p-6">
         {userAppointments.length === 0 ? (
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"><Calendar className="h-8 w-8 text-gray-400" /></div>
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-gray-400" />
+            </div>
             <p className="text-gray-500 text-lg">Você não possui agendamentos.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {userAppointments.map(a => {
-              const service = SERVICES.find(s => s.id === a.service);
+              // Usa services dinâmico ao invés de SERVICES
+              const service = services.find(s => s.id === a.service);
               return (
                 <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-300">
                   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">{service?.name}</h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600"><Calendar className="h-4 w-4" /><span>{a.date.split('-').reverse().join('/')}</span></div>
-                        <div className="flex items-center gap-2 text-gray-600"><Clock className="h-4 w-4" /><span>{a.time}</span></div>
-                        <div className="flex items-center gap-2 text-gray-600"><DollarSign className="h-4 w-4" /><span className="font-semibold">R$ {service?.price}</span></div>
-                        <div className="flex items-center gap-2 text-gray-600"><Clock className="h-4 w-4" /><span>{service?.duration}min</span></div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar className="h-4 w-4" />
+                          <span>{a.date.split('-').reverse().join('/')}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Clock className="h-4 w-4" />
+                          <span>{a.time}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <DollarSign className="h-4 w-4" />
+                          <span className="font-semibold">R$ {service?.price}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Clock className="h-4 w-4" />
+                          <span>{service?.duration}min</span>
+                        </div>
                       </div>
                     </div>
-                    <button onClick={() => handleEditAppointment(a)} className="w-full lg:w-auto bg-gray-900 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors font-medium"><Edit className="h-4 w-4" /> Editar</button>
+                    <button 
+                      onClick={() => handleEditAppointment(a)} 
+                      className="w-full lg:w-auto bg-gray-900 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors font-medium"
+                    >
+                      <Edit className="h-4 w-4" /> Editar
+                    </button>
                   </div>
                 </div>
               );

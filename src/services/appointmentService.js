@@ -138,6 +138,61 @@ export const appointmentService = {
       throw error;
     }
   },
+
+  async createService(serviceData) {
+  try {
+    const docRef = await addDoc(collection(db, 'services'), {
+      ...serviceData,
+      createdAt: new Date(),
+    });
+    return { ...serviceData, id: docRef.id };
+  } catch (error) {
+    console.error('Erro ao criar serviço:', error);
+    throw error;
+  }
+},
+
+async getAllServices() {
+  try {
+    const q = query(
+      collection(db, 'services'),
+      orderBy('name', 'asc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Erro ao buscar serviços:', error);
+    throw error;
+  }
+},
+
+async updateService(id, updateData) {
+  try {
+    const docRef = doc(db, 'services', id);
+    await updateDoc(docRef, {
+      ...updateData,
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar serviço:', error);
+    throw error;
+  }
+},
+
+async deleteService(id) {
+  try {
+    const docRef = doc(db, 'services', id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.error('Erro ao deletar serviço:', error);
+    throw error;
+  }
+},
 };
+
+
 
 

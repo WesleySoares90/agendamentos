@@ -31,9 +31,12 @@ import { auth } from '../config/firebase';
 import { appointmentService } from '../services/appointmentService';
 import { SERVICES, APPOINTMENT_STATUS } from '../utils/constants';
 import EditProfessionalModal from './EditProfessionalModal'
+import ServiceManager from './ServiceManager';
+import EditServiceModal from './EditServiceModal';
+
 
 // Componente de Analytics
-const AnalyticsDashboard = ({ appointments, professionals }) => {
+const AnalyticsDashboard = ({ appointments, professionals, services }) => {
   const today = new Date();
   const thisMonth = today.getMonth();
   const thisYear = today.getFullYear();
@@ -46,7 +49,7 @@ const AnalyticsDashboard = ({ appointments, professionals }) => {
   const revenue = monthlyAppointments
     .filter(apt => apt.status === 'approved')
     .reduce((sum, apt) => {
-      const service = SERVICES.find(s => s.id === apt.service);
+      const service = services.find(s => s.id === apt.service);
       return sum + parseFloat(service?.price || 0);
     }, 0);
 
@@ -62,7 +65,7 @@ const AnalyticsDashboard = ({ appointments, professionals }) => {
     const profRevenue = profAppointments
       .filter(apt => apt.status === 'approved')
       .reduce((sum, apt) => {
-        const service = SERVICES.find(s => s.id === apt.service);
+        const service = services.find(s => s.id === apt.service);
         return sum + parseFloat(service?.price || 0);
       }, 0);
 
@@ -349,6 +352,10 @@ const AdminPanel = ({
   const [professionalFilter, setProfessionalFilter] = useState('all');
   const [localAppointments, setLocalAppointments] = useState(appointments);
   const [professionals, setProfessionals] = useState([]);
+  const [services, setServices] = useState([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [editingService, setEditingService] = useState(null);
+  const [showEditServiceModal, setShowEditServiceModal] = useState(false);
 
   // Estados para controle da UI (Interface do Usuário)
   const [activeTab, setActiveTab] = useState('appointments');
@@ -360,6 +367,75 @@ const AdminPanel = ({
 
   // --- 2. FUNÇÕES DE LÓGICA E MANIPULAÇÃO DE DADOS (HANDLERS) ---
 
+  const fetchServices = useCallback(async () => {
+    setIsLoadingServices(true);
+    try {
+      const servs = await appointmentService.getAllServices();
+      setServices(servs);
+    } catch (error) {
+      console.error("Erro ao buscar serviços:", error);
+      alert("Ocorreu um erro ao carregar a lista de serviços. Verifique o console.");
+    } finally {
+      setIsLoadingServices(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchServices();
+  }, [fetchServices]);
+
+  const handleAddService = async (serviceData) => {
+    try {
+      await appointmentService.createService(serviceData);
+      await fetchServices();
+    } catch (error) {
+      console.error("Erro ao adicionar serviço:", error);
+      alert("Não foi possível adicionar o serviço. Verifique o console.");
+    }
+  };
+
+  const handleEditService = (service) => {
+    setEditingService(service);
+    setShowEditServiceModal(true);
+  };
+
+  const handleUpdateService = async (updatedData) => {
+    if (!editingService) return;
+    try {
+      await appointmentService.updateService(editingService.id, updatedData);
+      await fetchServices();
+      setShowEditServiceModal(false);
+      setEditingService(null);
+    } catch (error) {
+      console.error("Erro ao atualizar serviço:", error);
+      alert("Não foi possível salvar as alterações. Verifique o console.");
+    }
+  };
+
+  const handleDeleteService = async (serviceId) => {
+    // Verificar se o serviço está sendo usado em agendamentos
+    const serviceInUse = localAppointments.some(apt => apt.service === serviceId);
+
+    if (serviceInUse) {
+      alert("Este serviço não pode ser excluído pois possui agendamentos associados.");
+      return;
+    }
+
+    if (window.confirm("Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita.")) {
+      try {
+        await appointmentService.deleteService(serviceId);
+        await fetchServices();
+      } catch (error) {
+        console.error("Erro ao excluir serviço:", error);
+        alert("Não foi possível excluir o serviço. Verifique o console.");
+      }
+    }
+  };
+
+  const handleCloseServiceModal = () => {
+    setShowEditServiceModal(false);
+    setEditingService(null);
+  };
   // Função centralizada para buscar profissionais
   const fetchProfessionals = useCallback(async () => {
     setIsLoadingProfessionals(true); // Agora a função existe
@@ -577,6 +653,16 @@ const AdminPanel = ({
                 }`}
             >
               Profissionais
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('services')}
+              className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'services'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+                }`}
+            >
+              Serviços
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
@@ -879,6 +965,30 @@ const AdminPanel = ({
           </>
         )}
 
+        {activeTab === 'services' && (
+          isLoadingServices ? (
+            <div className="text-center p-10">
+              <p className="text-gray-500">Carregando serviços...</p>
+            </div>
+          ) : (
+            <ServiceManager
+              services={services.filter(service => service && service.id)}
+              onAdd={handleAddService}
+              onEdit={handleEditService}
+              onDelete={handleDeleteService}
+              appointments={localAppointments}
+            />
+          )
+        )}
+
+        {showEditServiceModal && editingService && (
+          <EditServiceModal
+            service={editingService}
+            onClose={handleCloseServiceModal}
+            onSave={handleUpdateService}
+          />
+        )}
+
         {activeTab === 'professionals' && (
           isLoadingProfessionals ? (
             <div className="text-center p-10">
@@ -899,6 +1009,7 @@ const AdminPanel = ({
           <AnalyticsDashboard
             appointments={localAppointments}
             professionals={professionals}
+            services={services}
           />
         )}
 
