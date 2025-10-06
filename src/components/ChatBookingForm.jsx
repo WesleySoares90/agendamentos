@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar, CheckCircle, AlertCircle, ChevronRight } from 'lucide-react'; 
+import { User, Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar, CheckCircle, AlertCircle, ChevronRight } from 'lucide-react';
 import { TIME_SLOTS } from '../utils/constants';
 import { useAppointments } from '../hooks/useAppointments';
 import { appointmentService } from '../services/appointmentService';
@@ -28,7 +28,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     date: editingAppointment?.date || '',
     time: editingAppointment?.time || ''
   });
-  
+
   const [isTyping, setIsTyping] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const messagesEndRef = useRef(null);
@@ -88,7 +88,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const generateSummaryCard = () => {
     const service = services.find(s => s.id === formData.service);
     const professional = professionals.find(p => p.id === formData.professionalId);
-    
+
     return {
       name: formData.name,
       email: formData.email,
@@ -125,14 +125,14 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   const checkAvailableSlots = async (selectedDate, professionalId) => {
     if (!selectedDate || !professionalId) return;
     try {
-      const dayAppointments = appointments.filter(apt => 
-        apt.date === selectedDate && 
+      const dayAppointments = appointments.filter(apt =>
+        apt.date === selectedDate &&
         apt.professionalId === professionalId &&
         apt.status !== 'cancelled'
       );
-      const slotsStatus = TIME_SLOTS.map(time => ({ 
-        time, 
-        available: dayAppointments.filter(apt => apt.time === time).length === 0 
+      const slotsStatus = TIME_SLOTS.map(time => ({
+        time,
+        available: dayAppointments.filter(apt => apt.time === time).length === 0
       }));
       setAvailableSlots(slotsStatus);
       return slotsStatus;
@@ -162,7 +162,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   useEffect(() => {
     if (hasSentWelcome.current || professionals.length === 0 || services.length === 0) return;
     hasSentWelcome.current = true;
-  
+
     if (editingAppointment) {
       setFormData(editingAppointment);
       setCurrentStep('confirmation');
@@ -174,8 +174,8 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         setTimeout(() => addBotMessage("Qual o seu nome completo?"), 1000);
       }, 500);
     }
-  }, [editingAppointment, professionals, services]); 
-  
+  }, [editingAppointment, professionals, services]);
+
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => phone.replace(/\D/g, '').length >= 10;
 
@@ -232,7 +232,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     processUserInput(value);
   };
 
-  const handleKeyPress = (e) => { 
+  const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -305,7 +305,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       case 'service':
         const selectedService = services.find(s => s.id === input);
         if (!selectedService) return addBotMessage("❌ Selecione um serviço válido.", null, true);
-        
+
         const updatedDataService = { ...formData, service: input };
         setFormData(updatedDataService);
 
@@ -348,7 +348,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         if (!input) return;
         const updatedDataDate = { ...formData, date: input };
         setFormData(updatedDataDate);
-        
+
         if (editingField) {
           setEditingField(null);
           setCurrentStep('time');
@@ -366,7 +366,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
 
       case 'time':
         if (!TIME_SLOTS.includes(input)) return addBotMessage("❌ Escolha um horário disponível.", null, true);
-        
+
         const updatedDataTime = { ...formData, time: input };
         setFormData(updatedDataTime);
 
@@ -402,7 +402,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           setTimeout(() => addBotMessage("Ok, vamos recomeçar. Qual o seu nome?"), 500);
           return;
         }
-        
+
         setEditingField(input);
         setCurrentStep(input);
 
@@ -413,7 +413,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           time: "Ok, escolha o novo horário."
         };
         addBotMessage(fieldMap[input] || "Ok, vamos alterar isso.");
-        
+
         if (input === 'service') {
           setTimeout(() => {
             addBotMessage("Escolha o novo serviço:", services.map(s => ({ value: s.id, name: `${s.name} - R$ ${s.price}`, price: s.price, duration: s.duration })));
@@ -455,8 +455,8 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
       setTimeout(() => {
         addBotMessage(
           "Você receberá um e-mail de confirmação em breve.",
-          [{ 
-            value: calendarLink, 
+          [{
+            value: calendarLink,
             name: '📅 Adicionar ao Google Agenda',
             isLink: true
           }]
@@ -514,7 +514,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           <span>{Math.round(progress)}%</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div 
+          <div
             className="bg-gradient-to-r from-gray-800 to-gray-900 h-full rounded-full transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
@@ -628,7 +628,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
     </div>
   );
 
- const ServiceCard = ({ service, onSelect }) => (
+  const ServiceCard = ({ service, onSelect }) => (
     <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300 overflow-hidden group">
       <div className="p-6">
         <div className="flex items-start justify-between mb-4">
@@ -647,8 +647,8 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             <span className="text-2xl font-bold text-gray-900">R$ {service.price}</span>
           </div>
         </div>
-        <button 
-          onClick={() => onSelect(service.id)} 
+        <button
+          onClick={() => onSelect(service.id)}
           className="w-full bg-gray-900 text-white py-3 rounded-lg hover:bg-gray-800 active:bg-gray-700 transition-colors font-medium flex items-center justify-center gap-2"
         >
           Agendar <ChevronRight className="h-4 w-4" />
@@ -714,7 +714,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             {userAppointments.map(appointment => {
               const service = services.find(s => s.id === appointment.service);
               const professional = professionals.find(p => p.id === appointment.professionalId);
-              
+
               return (
                 <div key={appointment.id} className="bg-white rounded-xl border-2 border-gray-200 shadow-sm p-6 hover:shadow-lg transition-all">
                   <div className="flex justify-between items-start mb-4">
@@ -722,16 +722,15 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
                       <h3 className="text-lg font-bold text-gray-900">{service?.name}</h3>
                       <p className="text-sm text-gray-600">com {professional?.name}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      appointment.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                      appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                      'bg-yellow-100 text-yellow-700'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${appointment.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                        appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                      }`}>
                       {appointment.status === 'confirmed' ? 'Confirmado' :
-                       appointment.status === 'cancelled' ? 'Cancelado' : 'Pendente'}
+                        appointment.status === 'cancelled' ? 'Cancelado' : 'Pendente'}
                     </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="h-4 w-4" />
@@ -781,13 +780,12 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             key={idx}
             onClick={() => isAvailable && onSelect(slot.time)}
             disabled={!isAvailable}
-            className={`p-3 rounded-lg border-2 transition-all ${
-              isSelected
+            className={`p-3 rounded-lg border-2 transition-all ${isSelected
                 ? 'bg-gray-900 text-white border-gray-900 scale-105'
                 : isAvailable
-                ? 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-                : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
-            }`}
+                  ? 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                  : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+              }`}
           >
             <div className="font-semibold">{slot.time}</div>
             {!isAvailable && <div className="text-xs mt-1">Ocupado</div>}
@@ -802,7 +800,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   if (viewMode === 'reservations') return <ReservationsView />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 flex items-center justify-center"  style={{
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 flex items-center justify-center" style={{
       backgroundImage: `url(${bgImage})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center'
@@ -816,17 +814,16 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
-              <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${
-                m.type === 'user'
+              <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${m.type === 'user'
                   ? 'bg-gray-900 text-white rounded-br-sm'
                   : m.isSystem
-                  ? 'bg-red-50 text-red-800 border border-red-200 rounded-bl-sm'
-                  : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
-              }`}>
+                    ? 'bg-red-50 text-red-800 border border-red-200 rounded-bl-sm'
+                    : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
+                }`}>
                 <p className="text-sm leading-relaxed whitespace-pre-line">{m.text}</p>
                 {m.options && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {m.options.map((option, optIdx) => 
+                    {m.options.map((option, optIdx) =>
                       option.isLink ? (
                         <a
                           key={optIdx}
@@ -857,10 +854,10 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             <div className="flex justify-start animate-fadeIn">
               <div className="max-w-[90%] p-4 rounded-2xl bg-white border border-gray-200 rounded-bl-sm">
                 <p className="text-sm mb-3 text-gray-700">📅 Selecione a data:</p>
-                <DateSelector 
-                  selectedDate={formData.date} 
-                  onDateSelect={(date) => processUserInput(date)} 
-                  availableSlots={availableSlots} 
+                <DateSelector
+                  selectedDate={formData.date}
+                  onDateSelect={(date) => processUserInput(date)}
+                  availableSlots={availableSlots}
                 />
               </div>
             </div>
@@ -903,8 +900,8 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
               className="flex-1 p-3 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-gray-900 focus:outline-none transition-all"
               placeholder={
                 currentStep === 'phone' ? '(21) 98765-4321' :
-                currentStep === 'email' ? 'seu@email.com' :
-                'Digite sua mensagem...'
+                  currentStep === 'email' ? 'seu@email.com' :
+                    'Digite sua mensagem...'
               }
               value={currentInput}
               onChange={currentStep === 'phone' ? handlePhoneChange : (e) => setCurrentInput(e.target.value)}

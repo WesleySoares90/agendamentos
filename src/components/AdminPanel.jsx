@@ -24,16 +24,58 @@ import {
   Plus,
   Scissors,
   UserPlus,
-  Trash2
+  Trash2,
+  Shield
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { appointmentService } from '../services/appointmentService';
-import { SERVICES, APPOINTMENT_STATUS } from '../utils/constants';
+import { APPOINTMENT_STATUS } from '../utils/constants';
 import EditProfessionalModal from './EditProfessionalModal'
 import ServiceManager from './ServiceManager';
 import EditServiceModal from './EditServiceModal';
 
+const AutoApproveToggle = ({ enabled, onToggle }) => {
+  return (
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm border-2 border-blue-200 p-6 mb-6">
+      <div className="flex items-start gap-4">
+        <div className="p-3 bg-blue-600 rounded-lg">
+          <Shield className="h-6 w-6 text-white" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Aprovação Automática de Agendamentos
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            {enabled
+              ? 'Todos os novos agendamentos serão aprovados automaticamente sem necessidade de revisão manual.'
+              : 'Novos agendamentos precisam de aprovação manual do administrador.'}
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onToggle}
+              className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${enabled ? 'bg-green-600' : 'bg-gray-300'
+                }`}
+              aria-label={enabled ? 'Desativar aprovação automática' : 'Ativar aprovação automática'}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-9' : 'translate-x-1'
+                  }`}
+              />
+            </button>
+            <span className={`text-sm font-medium ${enabled ? 'text-green-700' : 'text-gray-600'}`}>
+              {enabled ? 'Ativado' : 'Desativado'}
+            </span>
+          </div>
+        </div>
+        <div className={`px-4 py-2 rounded-lg ${enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+          <p className="text-xs font-semibold uppercase tracking-wide">Status</p>
+          <p className="text-sm font-bold mt-1">{enabled ? '✓ Automático' : '⏳ Manual'}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Componente de Analytics
 const AnalyticsDashboard = ({ appointments, professionals, services }) => {
@@ -78,7 +120,7 @@ const AnalyticsDashboard = ({ appointments, professionals, services }) => {
   }).sort((a, b) => b.revenue - a.revenue);
 
   // Serviços mais populares
-  const serviceStats = SERVICES.map(service => {
+  const serviceStats = services.map(service => {
     const count = appointments.filter(apt => apt.service === service.id).length;
     const revenue = appointments
       .filter(apt => apt.service === service.id && apt.status === 'approved')
@@ -342,10 +384,11 @@ const AdminPanel = ({
   loading,
   onUpdateStatus,
   onEditAppointment,
-  onRefresh
+  onRefresh,
+  autoApprove,
+  onToggleAutoApprove
 }) => {
   // --- 1. DECLARAÇÃO DE TODOS OS ESTADOS ---
-  // Estados para filtros e dados
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
   const [searchTerm, setSearchTerm] = useState('');
@@ -569,7 +612,7 @@ const AdminPanel = ({
   const exportToCSV = () => {
     const headers = ['Nome', 'Email', 'Telefone', 'Serviço', 'Profissional', 'Data', 'Horário', 'Status'];
     const rows = filteredAppointments.map(apt => {
-      const service = SERVICES.find(s => s.id === apt.service);
+      const service = services.find(s => s.id === apt.service);
       const professional = professionals.find(p => p.id === apt.professionalId);
       return [
         apt.name,
@@ -655,12 +698,12 @@ const AdminPanel = ({
             >
               Profissionais
             </button>
-            
+
             <button
               onClick={() => setActiveTab('services')}
               className={`px-4 py-2 font-medium transition-colors whitespace-nowrap ${activeTab === 'services'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               Serviços
@@ -679,6 +722,10 @@ const AdminPanel = ({
 
         {activeTab === 'appointments' && (
           <>
+            <AutoApproveToggle
+              enabled={autoApprove}
+              onToggle={onToggleAutoApprove}
+            />
             {/* Cards de Estatísticas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <button
@@ -847,7 +894,7 @@ const AdminPanel = ({
               ) : (
                 <div className="divide-y divide-gray-200">
                   {filteredAppointments.map(apt => {
-                    const service = SERVICES.find(s => s.id === apt.service);
+                    const service = services.find(s => s.id === apt.service);
                     const professional = professionals.find(p => p.id === apt.professionalId);
                     const isUpdating = updatingStatus[apt.id];
 
