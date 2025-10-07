@@ -1262,7 +1262,7 @@ const AdminPanel = ({
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                   >
                     <option value="">Selecione um serviço</option>
-                    {services.filter(service => service && service.id && service.name).map(service => (
+                    {services.map(service => (
                       <option key={service.id} value={service.id}>
                         {service.name} - R$ {service.price} ({service.duration}min)
                       </option>

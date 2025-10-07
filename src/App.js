@@ -22,8 +22,8 @@ function App() {
   const {
     appointments,
     loading,
-    autoApprove,          
-    toggleAutoApprove,   
+    autoApprove,
+    toggleAutoApprove,
     error,
     fetchAppointments,
     createAppointment,
@@ -44,7 +44,7 @@ function App() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setAuthLoading(false);
-      
+
       if (user) {
         setCurrentView('admin');
       } else {
@@ -54,7 +54,7 @@ function App() {
         setResetTrigger(prev => prev + 1);
       }
     });
-    
+
     fetchProfessionals();
     return () => unsubscribe();
   }, []);
@@ -73,20 +73,20 @@ function App() {
       }
     } catch (error) {
       console.error('Erro ao processar agendamento:', error);
-      return { 
-        success: false, 
-        error: 'Erro ao processar agendamento. Tente novamente.' 
+      return {
+        success: false,
+        error: 'Erro ao processar agendamento. Tente novamente.'
       };
     }
   };
 
   const handleLoginSuccess = () => setCurrentView('admin');
-  
+
   const handleEditAppointment = (appointment) => {
     setEditingAppointment(appointment);
     setCurrentView('booking');
   };
-  
+
   const handleBackToBooking = () => {
     setEditingAppointment(null);
     setCurrentView('booking');
@@ -112,8 +112,8 @@ function App() {
       <AdminPanel
         appointments={appointments}
         loading={loading}
-        autoApprove={autoApprove}            
-        onToggleAutoApprove={toggleAutoApprove} 
+        autoApprove={autoApprove}
+        onToggleAutoApprove={toggleAutoApprove}
         onUpdateStatus={updateAppointmentStatus}
         onEditAppointment={handleEditAppointment}
         onRefresh={fetchAppointments}
@@ -129,10 +129,13 @@ function App() {
         <div className="absolute top-4 right-4 z-50">
           <button
             onClick={() => setCurrentView(user ? 'admin' : 'login')}
-            className="bg-gray-700 text-white p-3 rounded-full hover:bg-gray-800 transition-colors shadow-lg"
+            className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors shadow-lg"
             aria-label="Acessar painel administrativo"
           >
-            <Shield className="h-6 w-6" />
+            <Shield className="h-5 w-5" />
+            <span className="text-sm font-medium">
+              {user ? 'Admin' : 'Login'}
+            </span>
           </button>
         </div>
       )}

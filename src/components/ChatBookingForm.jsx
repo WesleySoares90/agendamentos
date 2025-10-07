@@ -723,8 +723,8 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
                       <p className="text-sm text-gray-600">com {professional?.name}</p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${appointment.status === 'confirmed' ? 'bg-green-100 text-green-700' :
-                        appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                          'bg-yellow-100 text-yellow-700'
+                      appointment.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
                       }`}>
                       {appointment.status === 'confirmed' ? 'Confirmado' :
                         appointment.status === 'cancelled' ? 'Cancelado' : 'Pendente'}
@@ -781,10 +781,10 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             onClick={() => isAvailable && onSelect(slot.time)}
             disabled={!isAvailable}
             className={`p-3 rounded-lg border-2 transition-all ${isSelected
-                ? 'bg-gray-900 text-white border-gray-900 scale-105'
-                : isAvailable
-                  ? 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-                  : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+              ? 'bg-gray-900 text-white border-gray-900 scale-105'
+              : isAvailable
+                ? 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
               }`}
           >
             <div className="font-semibold">{slot.time}</div>
@@ -815,10 +815,10 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
               <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${m.type === 'user'
-                  ? 'bg-gray-900 text-white rounded-br-sm'
-                  : m.isSystem
-                    ? 'bg-red-50 text-red-800 border border-red-200 rounded-bl-sm'
-                    : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
+                ? 'bg-gray-900 text-white rounded-br-sm'
+                : m.isSystem
+                  ? 'bg-red-50 text-red-800 border border-red-200 rounded-bl-sm'
+                  : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
                 }`}>
                 <p className="text-sm leading-relaxed whitespace-pre-line">{m.text}</p>
                 {m.options && (
