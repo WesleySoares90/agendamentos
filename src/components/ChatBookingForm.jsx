@@ -50,6 +50,10 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
     fetchServices();
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = 'pt-BR';
+  }, []);
+
   // Fetch professionals
   useEffect(() => {
     const fetchProfessionals = async () => {
@@ -822,7 +826,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
       <div
         className="
         w-full bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden flex flex-col
-        h-[95dvh] md:h-[80vh] md:max-h-[700px] md:max-w-2xl
+        h-[90dvh] md:h-[80vh] md:max-h-[700px] md:max-w-2xl
       "
       >
         <Header title="💈 Salão Ipanema" />
