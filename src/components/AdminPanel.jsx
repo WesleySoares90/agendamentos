@@ -100,25 +100,27 @@ const AnalyticsDashboard = ({ appointments, professionals, services }) => {
     : 0;
 
   const uniqueClients = new Set(appointments.map(apt => apt.email)).size;
+  // Analytics por profissional - filtra apenas profissionais ativos com IDs válidos
+  const professionalStats = professionals
+    .filter(prof => prof && prof.id && prof.name) // Garante que o profissional é válido e está ativo
+    .map(prof => {
+      const profAppointments = appointments.filter(apt => apt.professionalId === prof.id);
+      const profRevenue = profAppointments
+        .filter(apt => apt.status === 'approved')
+        .reduce((sum, apt) => {
+          const service = services.find(s => s.id === apt.service);
+          return sum + parseFloat(service?.price || 0);
+        }, 0);
 
-  // Analytics por profissional
-  const professionalStats = professionals.map(prof => {
-    const profAppointments = appointments.filter(apt => apt.professionalId === prof.id);
-    const profRevenue = profAppointments
-      .filter(apt => apt.status === 'approved')
-      .reduce((sum, apt) => {
-        const service = services.find(s => s.id === apt.service);
-        return sum + parseFloat(service?.price || 0);
-      }, 0);
-
-    return {
-      ...prof,
-      appointmentsCount: profAppointments.length,
-      revenue: profRevenue,
-      approvedCount: profAppointments.filter(apt => apt.status === 'approved').length
-    };
-  }).sort((a, b) => b.revenue - a.revenue);
-
+      return {
+        ...prof,
+        appointmentsCount: profAppointments.length,
+        revenue: profRevenue,
+        approvedCount: profAppointments.filter(apt => apt.status === 'approved').length
+      };
+    })
+    .filter(stat => stat.appointmentsCount > 0) // Remove profissionais sem agendamentos
+    .sort((a, b) => b.revenue - a.revenue);
   // Serviços mais populares
   const serviceStats = services.map(service => {
     const count = appointments.filter(apt => apt.service === service.id).length;
@@ -181,7 +183,6 @@ const AnalyticsDashboard = ({ appointments, professionals, services }) => {
           <p className="text-3xl font-bold text-gray-900">{formatCurrency(averageTicket)}</p>
         </div>
       </div>
-
       {/* Performance por Profissional */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance por Profissional</h3>
@@ -203,9 +204,11 @@ const AnalyticsDashboard = ({ appointments, professionals, services }) => {
               </div>
             </div>
           ))}
+          {professionalStats.length === 0 && (
+            <p className="text-center text-gray-500 py-8">Nenhum profissional ativo com agendamentos</p>
+          )}
         </div>
       </div>
-
       {/* Serviços Mais Populares */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Serviços Mais Populares</h3>

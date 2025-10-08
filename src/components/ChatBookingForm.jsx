@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar, CheckCircle, AlertCircle, ChevronRight } from 'lucide-react';
+import { User, Send, Eye, Edit, ArrowLeft, Menu, X, Clock, DollarSign, Calendar, CheckCircle, AlertCircle, ChevronRight, Shield } from 'lucide-react';
 import { TIME_SLOTS } from '../utils/constants';
 import { useAppointments } from '../hooks/useAppointments';
 import { appointmentService } from '../services/appointmentService';
 import DateSelector from './DateSelector';
 import bgImage from '../img/salao-ipanema-1024x576.jpg.webp';
 
-const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
+const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, setCurrentView }) => {
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
   const [currentStep, setCurrentStep] = useState('welcome');
@@ -624,10 +624,22 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
             Voltar
           </button>
         )}
+
+        {/* 🚀 Botão de Login/Admin para Mobile */}
+        <button
+          onClick={() => setCurrentView(user ? 'admin' : 'login')}
+          className="w-full flex items-center justify-center gap-2 bg-gray-700 text-white px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors"
+          aria-label="Acessar painel administrativo"
+        >
+          <Shield className="h-4 w-4" />
+          <span className="text-sm font-medium">
+            {user ? 'Painel Admin' : 'Login'}
+          </span>
+        </button>
+
       </div>
     </div>
   );
-
   const ServiceCard = ({ service, onSelect }) => (
     <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300 overflow-hidden group">
       <div className="p-6">
@@ -798,20 +810,27 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null }) => {
   // Render based on viewMode
   if (viewMode === 'services') return <ServicesView />;
   if (viewMode === 'reservations') return <ReservationsView />;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 flex items-center justify-center" style={{
-      backgroundImage: `url(${bgImage})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center'
-    }}>
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[80vh] max-h-[700px]">
+    <div
+      className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-0 flex items-center justify-center"
+      style={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div
+        className="
+        w-full bg-white rounded-none md:rounded-2xl shadow-2xl overflow-hidden flex flex-col
+        h-[100dvh] md:h-[80vh] md:max-h-[700px] md:max-w-2xl
+      "
+      >
         <Header title="💈 Salão Ipanema" />
         <MobileMenu />
         <ProgressBar />
         <SummaryPanel />
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+        <div className="flex-1 overflow-y-auto space-y-3 bg-gray-50 p-2 md:p-4">
           {messages.map((m, idx) => (
             <div key={idx} className={`flex ${m.type === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
               <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${m.type === 'user'

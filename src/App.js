@@ -36,7 +36,7 @@ function App() {
       const profsData = await appointmentService.getAllProfessionals();
       setProfessionals(profsData);
     } catch (error) {
-      console.error("Erro ao carregar profissionais:", error);
+      console.error('Erro ao carregar profissionais:', error);
     }
   };
 
@@ -51,7 +51,7 @@ function App() {
         // Quando o usuário faz logout, resetar o chat
         setCurrentView('booking');
         setEditingAppointment(null);
-        setResetTrigger(prev => prev + 1);
+        setResetTrigger((prev) => prev + 1);
       }
     });
 
@@ -125,32 +125,37 @@ function App() {
 
   return (
     <>
-      {currentView !== 'admin' && (
-        <div className="absolute top-4 right-4 z-50">
-          <button
-            onClick={() => setCurrentView(user ? 'admin' : 'login')}
-            className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors shadow-lg"
-            aria-label="Acessar painel administrativo"
-          >
-            <Shield className="h-5 w-5" />
-            <span className="text-sm font-medium">
-              {user ? 'Admin' : 'Login'}
-            </span>
-          </button>
-        </div>
-      )}
+      {/* 🔹 BOTÃO LOGIN SOMENTE DESKTOP (FORA DO BLOCO) */}
+      <div className="absolute top-4 right-4 z-50 hidden md:block">
+        <button
+          onClick={() => setCurrentView(user ? 'admin' : 'login')}
+          className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors shadow-lg"
+          aria-label="Acessar painel administrativo"
+        >
+          <Shield className="h-5 w-5" />
+          <span className="text-sm font-medium">
+            {user ? 'Admin' : 'Login'}
+          </span>
+        </button>
+      </div>
 
+      {/* 🔹 Chat Booking + Menu Mobile (botão login aparece dentro do menu) */}
       <ChatBookingForm
         onSubmit={handleBookingSubmit}
         loading={loading}
         editingAppointment={editingAppointment}
         professionals={professionals}
         resetTrigger={resetTrigger}
+        user={user}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
       />
 
       {error && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 max-w-md p-4 bg-red-100 text-red-700 rounded-md text-center shadow-lg z-50">
-          <p><strong>Erro:</strong> {error}</p>
+          <p>
+            <strong>Erro:</strong> {error}
+          </p>
         </div>
       )}
     </>
