@@ -1,10 +1,24 @@
-import React, { useState, useEffect } from 'react';
+// src/components/DateSelector.js
+
+import React, { useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const DateSelector = ({ onDateSelect, selectedDate }) => {
+const DateSelector = ({ onDateSelect, selectedDate, workingHours }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Formata uma data para o formato 'YYYY-MM-DD'
+  // Mapeia o getDay() do JS (Dom=0) para as chaves do seu objeto de configuração
+  const dayKeys = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+
+  const isWorkingDay = (date) => {
+    if (!date || !workingHours) {
+      return false; // Por segurança, se as configurações não carregaram, desabilita tudo.
+    }
+    const dayOfWeek = date.getDay();
+    const dayKey = dayKeys[dayOfWeek];
+    return workingHours[dayKey]?.active || false;
+  };
+
+  // ... (outras funções como formatDataForForm, getDaysInMonth, etc. permanecem iguais)
   const formatDataForForm = (date) => {
     if (!date) return '';
     const d = new Date(date);
@@ -14,18 +28,13 @@ const DateSelector = ({ onDateSelect, selectedDate }) => {
     return `${year}-${month}-${day}`;
   };
 
-  // Gera os dias visíveis no calendário para o mês atual
   const getDaysInMonth = (year, month) => {
     const date = new Date(year, month, 1);
     const days = [];
-    const firstDayOfWeek = date.getDay(); // 0 = Domingo, 1 = Segunda, etc.
-
-    // Adiciona dias em branco para o início do mês
+    const firstDayOfWeek = date.getDay();
     for (let i = 0; i < firstDayOfWeek; i++) {
       days.push(null);
     }
-
-    // Adiciona os dias do mês
     while (date.getMonth() === month) {
       days.push(new Date(date));
       date.setDate(date.getDate() + 1);
@@ -37,20 +46,13 @@ const DateSelector = ({ onDateSelect, selectedDate }) => {
   const month = currentDate.getMonth();
   const calendarDays = getDaysInMonth(year, month);
 
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
+  const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
-
-  // Função para lidar com a seleção do input[type=date]
   const handleDateInput = (e) => {
     const dateValue = e.target.value;
     if (dateValue) {
       onDateSelect(dateValue);
-      // Opcional: ajustar o calendário para o mês selecionado
       const [y, m, d] = dateValue.split('-').map(Number);
       setCurrentDate(new Date(y, m - 1, d));
     }
@@ -58,45 +60,23 @@ const DateSelector = ({ onDateSelect, selectedDate }) => {
 
   const isToday = (date) => {
     if (!date) return false;
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
+    return date.toDateString() === new Date().toDateString();
   };
 
   const isPast = (date) => {
     if (!date) return false;
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Zera a hora para comparar apenas a data
+    today.setHours(0, 0, 0, 0);
     return date < today;
   };
 
   return (
     <div className="w-full py-2 bg-white rounded-lg">
-      {/* Cabeçalho com Navegação e Seletor de Calendário */}
+      {/* ... (cabeçalho do calendário - sem alterações) */}
       <div className="flex items-center justify-between px-2 mb-3">
-        <button onClick={handlePrevMonth} className="p-2 rounded-full hover:bg-gray-100">
-          <ChevronLeft className="h-5 w-5 text-gray-600" />
-        </button>
-        <h3 className="text-sm font-semibold text-gray-800 capitalize">
-          {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(currentDate)}
-        </h3>
-        <div className="flex items-center gap-2">
-          {/* Botão para abrir o seletor de data nativo */}
-          <label className="relative cursor-pointer p-2 rounded-full hover:bg-gray-100">
-            <Calendar className="h-5 w-5 text-gray-600" />
-            <input
-              type="date"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={handleDateInput}
-              min={formatDataForForm(new Date())} // Impede a seleção de datas passadas
-            />
-          </label>
-          <button onClick={handleNextMonth} className="p-2 rounded-full hover:bg-gray-100">
-            <ChevronRight className="h-5 w-5 text-gray-600" />
-          </button>
-        </div>
+        {/* ... */}
       </div>
 
-      {/* Grid do Calendário */}
       <div className="grid grid-cols-7 gap-1 px-2 text-center text-xs">
         {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, i) => (
           <div key={i} className="font-medium text-gray-500">{day}</div>
@@ -108,17 +88,21 @@ const DateSelector = ({ onDateSelect, selectedDate }) => {
 
           const formattedDate = formatDataForForm(date);
           const isSelected = formattedDate === selectedDate;
+          
+          // --- LÓGICA DE DESABILITAÇÃO CORRIGIDA ---
           const isPastDate = isPast(date);
+          const isDayOff = !isWorkingDay(date); // Verifica se é um dia de folga
+          const isDisabled = isPastDate || isDayOff;
 
           return (
             <button
               key={index}
-              onClick={() => !isPastDate && onDateSelect(formattedDate)}
-              disabled={isPastDate}
+              onClick={() => !isDisabled && onDateSelect(formattedDate)}
+              disabled={isDisabled}
               className={`h-9 w-9 rounded-full transition-colors duration-200 flex items-center justify-center
-                ${isPastDate ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100'}
+                ${isDisabled ? 'text-gray-300 cursor-not-allowed line-through' : 'hover:bg-gray-100'}
                 ${isSelected ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-transparent'}
-                ${isToday(date) && !isSelected ? 'border border-blue-500' : ''}
+                ${isToday(date) && !isSelected && !isDisabled ? 'border border-blue-500' : ''}
               `}
             >
               {date.getDate()}

@@ -34,6 +34,7 @@ import { APPOINTMENT_STATUS } from '../utils/constants';
 import EditProfessionalModal from './EditProfessionalModal'
 import ServiceManager from './ServiceManager';
 import EditServiceModal from './EditServiceModal';
+import SettingsPanel from './SettingsPanel';
 
 const AutoApproveToggle = ({ enabled, onToggle }) => {
   return (
@@ -379,8 +380,6 @@ const ProfessionalManager = ({ professionals, onAdd, onEdit, onDelete, appointme
     </div>
   );
 };
-
-
 // Componente Principal do AdminPanel
 const AdminPanel = ({
   appointments,
@@ -403,7 +402,9 @@ const AdminPanel = ({
   const [editingService, setEditingService] = useState(null);
   const [showEditServiceModal, setShowEditServiceModal] = useState(false);
 
+
   // Estados para controle da UI (Interface do Usuário)
+  const [settings, setSettings] = useState(null);
   const [activeTab, setActiveTab] = useState('appointments');
   const [showFilters, setShowFilters] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState({});
@@ -774,6 +775,33 @@ const AdminPanel = ({
     }
   };
 
+  const fetchSettings = useCallback(async () => {
+    try {
+      const settingsData = await appointmentService.getSettings();
+      setSettings(settingsData);
+    } catch (error) {
+      console.error("Falha ao carregar as configurações.", error);
+    }
+  }, []);
+
+  // Efeito para buscar as configurações na montagem do componente
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  // Função para salvar as configurações (NÃO mexe com autoApprove)
+  const handleSaveSettings = async (settingsDataToSave) => {
+    try {
+      await appointmentService.updateSettings(settingsDataToSave);
+      // Após salvar, busca os dados novamente para garantir que a UI está 100% sincronizada
+      await fetchSettings(); 
+      return true; // Indica sucesso para o SettingsPanel
+    } catch (error) {
+      console.error("Erro ao salvar configurações no AdminPanel:", error);
+      return false; // Indica falha
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
@@ -788,7 +816,13 @@ const AdminPanel = ({
                 <Bell className="h-4 w-4" />
                 <span className="hidden sm:inline">Notificações</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${activeTab === 'settings'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
                 <Settings className="h-4 w-4" />
                 <span className="hidden sm:inline">Configurações</span>
               </button>
@@ -1189,6 +1223,14 @@ const AdminPanel = ({
             appointments={localAppointments}
             professionals={professionals}
             services={services}
+          />
+        )}
+
+        {/* configurações */}
+        {activeTab === 'settings' && (
+          <SettingsPanel
+            initialSettings={settings}
+            onSave={handleSaveSettings}
           />
         )}
 
