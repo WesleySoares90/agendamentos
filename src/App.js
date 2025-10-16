@@ -1,6 +1,4 @@
-// src/App.js
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { useAppointments } from './hooks/useAppointments';
@@ -31,6 +29,7 @@ function App() {
     updateAppointment
   } = useAppointments();
 
+  
   const fetchProfessionals = async () => {
     try {
       const profsData = await appointmentService.getAllProfessionals();
@@ -40,6 +39,13 @@ function App() {
     }
   };
 
+  // Carrega dados iniciais apenas uma vez
+  useEffect(() => {
+    fetchProfessionals();
+    fetchAppointments();
+  }, []); // Array vazio - executa apenas na montagem
+
+  // Monitora mudanças de autenticação
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
@@ -47,17 +53,20 @@ function App() {
 
       if (user) {
         setCurrentView('admin');
+        // Recarrega dados quando faz login
+        fetchAppointments();
       } else {
-        // Quando o usuário faz logout, resetar o chat
+        // Reseta tudo quando faz logout
         setCurrentView('booking');
         setEditingAppointment(null);
         setResetTrigger((prev) => prev + 1);
+        // Recarrega dados quando faz logout
+        fetchAppointments();
       }
     });
 
-    fetchProfessionals();
     return () => unsubscribe();
-  }, []);
+  }, []); // Array vazio - só configura o listener uma vez
 
   const handleBookingSubmit = async (formData) => {
     try {
