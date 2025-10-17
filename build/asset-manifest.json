@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/agendamentos/static/css/main.849f5bbb.css",
-    "main.js": "/agendamentos/static/js/main.7616ac2c.js",
+    "main.css": "/agendamentos/static/css/main.8dd8d5d5.css",
+    "main.js": "/agendamentos/static/js/main.56b37b59.js",
     "static/js/453.b7cc0afd.chunk.js": "/agendamentos/static/js/453.b7cc0afd.chunk.js",
     "static/media/salao-ipanema-1024x576.jpg.webp": "/agendamentos/static/media/salao-ipanema-1024x576.jpg.71d2ff854c2245dcc7d1.webp",
     "index.html": "/agendamentos/index.html",
-    "main.849f5bbb.css.map": "/agendamentos/static/css/main.849f5bbb.css.map",
-    "main.7616ac2c.js.map": "/agendamentos/static/js/main.7616ac2c.js.map",
+    "main.8dd8d5d5.css.map": "/agendamentos/static/css/main.8dd8d5d5.css.map",
+    "main.56b37b59.js.map": "/agendamentos/static/js/main.56b37b59.js.map",
     "453.b7cc0afd.chunk.js.map": "/agendamentos/static/js/453.b7cc0afd.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.849f5bbb.css",
-    "static/js/main.7616ac2c.js"
+    "static/css/main.8dd8d5d5.css",
+    "static/js/main.56b37b59.js"
   ]
 }

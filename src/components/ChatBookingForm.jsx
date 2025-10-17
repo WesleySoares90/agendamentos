@@ -69,6 +69,29 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
     fetchProfessionals();
   }, []);
 
+  // Adicione dentro do componente, antes do return
+  useEffect(() => {
+    // Adiciona estilo customizado ao scroll
+    const style = document.createElement('style');
+    style.textContent = `
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+`;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(() => scrollToBottom(), [messages]);
 
@@ -128,16 +151,48 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
 
   const checkAvailableSlots = async (selectedDate, professionalId) => {
     if (!selectedDate || !professionalId) return;
+  
     try {
+      const settings = await appointmentService.getSettings();
+      
+      const dateObj = new Date(selectedDate + 'T00:00:00');
+      const dayOfWeek = dateObj.getDay();
+  
+      const daysMap = {
+        0: 'sunday',
+        1: 'monday',
+        2: 'tuesday',
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday'
+      };
+  
+      const dayKey = daysMap[dayOfWeek];
+      const businessHours = settings?.businessHours?.[dayKey];
+  
+      if (businessHours?.enabled === false) {
+        setAvailableSlots([]);
+        return [];
+      }
+  
       const dayAppointments = appointments.filter(apt =>
         apt.date === selectedDate &&
         apt.professionalId === professionalId &&
         apt.status !== 'cancelled'
       );
-      const slotsStatus = TIME_SLOTS.map(time => ({
+  
+      const openTime = businessHours?.open || '09:00';
+      const closeTime = businessHours?.close || '18:00';
+  
+      // CORREÇÃO: Gerar slots dinamicamente baseado nos horários do expediente
+      const slots = generateSlotsBetweenHours(openTime, closeTime);
+  
+      const slotsStatus = slots.map(time => ({
         time,
-        available: dayAppointments.filter(apt => apt.time === time).length === 0
+        available: !dayAppointments.some(apt => apt.time === time)
       }));
+  
       setAvailableSlots(slotsStatus);
       return slotsStatus;
     } catch (error) {
@@ -145,7 +200,27 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
       return TIME_SLOTS.map(time => ({ time, available: true }));
     }
   };
-
+  
+  // ADICIONAR esta função auxiliar
+  const generateSlotsBetweenHours = (openTime, closeTime) => {
+    const slots = [];
+    const [openHour, openMin] = openTime.split(':').map(Number);
+    const [closeHour, closeMin] = closeTime.split(':').map(Number);
+  
+    let currentHour = openHour;
+    let currentMin = openMin;
+  
+    while (currentHour < closeHour || (currentHour === closeHour && currentMin < closeMin)) {
+      const timeString = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+      slots.push(timeString);
+  
+      // Incrementar 1 hora
+      currentHour += 1;
+    }
+  
+    return slots;
+  };
+  
   const addBotMessage = (text, options = null, isSystem = false) => {
     setIsTyping(true);
     setTimeout(() => {
@@ -419,11 +494,11 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
               addBotMessage(promptMessage, professionals.map(p => ({ value: p.id, name: p.name })));
               setCurrentStep('professional');
               break;
-            case 'date':
-              promptMessage = "Qual data você gostaria de agendar?";
-              setShowDatePicker(true);
-              setCurrentStep('date');
-              break;
+              case 'date':
+                addBotMessage("Qual data você gostaria de agendar?");
+                setShowDatePicker(true);
+                setCurrentStep('date');
+                break;
             case 'time':
               promptMessage = "Qual horário você gostaria de agendar?";
               const slots = await checkAvailableSlots(formData.date, formData.professionalId);
@@ -523,6 +598,7 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
     hasSentWelcome.current = true;
     const selectedService = services.find(s => s.id === serviceId);
     addBotMessage(`✅ Você selecionou: ${selectedService.name}!`);
+    setShowDatePicker(true);
     setTimeout(() => {
       addBotMessage("Agora, escolha o profissional:", professionals.map(p => ({ value: p.id, name: p.name })));
     }, 800);
@@ -532,29 +608,6 @@ const ChatBookingForm = ({ onSubmit, loading, editingAppointment = null, user, s
   const ProgressBar = () => {
     const currentIndex = getCurrentStepIndex();
     const progress = ((currentIndex + 1) / steps.length) * 100;
-
-    // Adicione dentro do componente, antes do return
-    useEffect(() => {
-      // Adiciona estilo customizado ao scroll
-      const style = document.createElement('style');
-      style.textContent = `
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, 0.2);
-      border-radius: 3px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: rgba(0, 0, 0, 0.3);
-    }
-  `;
-      document.head.appendChild(style);
-      return () => document.head.removeChild(style);
-    }, []);
 
     return (
       <div className="px-4 py-3 bg-white border-b">

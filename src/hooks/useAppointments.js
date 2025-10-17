@@ -7,15 +7,43 @@ export const useAppointments = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // 🟢 ESTADO E FUNÇÃO PARA APROVAÇÃO AUTOMÁTICA
+  // Estado para aprovação automática
   const [autoApprove, setAutoApprove] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
-  const toggleAutoApprove = useCallback(() => {
-    setAutoApprove(prev => !prev);
-    // Idealmente, chame uma função aqui para persistir essa configuração no backend.
-    console.log(`Auto Aprovação Alternada para: ${!autoApprove}`);
+  // Carrega as configurações ao montar o componente
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const settings = await appointmentService.getSettings();
+        if (settings && settings.autoApprove !== undefined) {
+          setAutoApprove(settings.autoApprove);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar configurações:', err);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  // Alterna e persiste a configuração de aprovação automática
+  const toggleAutoApprove = useCallback(async () => {
+    const newValue = !autoApprove;
+    setAutoApprove(newValue);
+
+    try {
+      await appointmentService.updateSettings({ autoApprove: newValue });
+      console.log(`Auto Aprovação alternada para: ${newValue}`);
+    } catch (err) {
+      console.error('Erro ao salvar configuração de auto aprovação:', err);
+      // Reverte o estado em caso de erro
+      setAutoApprove(!newValue);
+      alert('Erro ao salvar configuração. Tente novamente.');
+    }
   }, [autoApprove]);
-
 
   const fetchAppointments = async () => {
     setLoading(true);
@@ -35,7 +63,6 @@ export const useAppointments = () => {
     setLoading(true);
     setError(null);
     try {
-      // **Passa o professionalId para a verificação de conflito**
       const hasConflict = await appointmentService.checkTimeConflict(
         appointmentData.date,
         appointmentData.time,
@@ -46,13 +73,12 @@ export const useAppointments = () => {
         throw new Error('Este horário já está ocupado com o profissional selecionado.');
       }
 
-      // 🎯 CORREÇÃO CRÍTICA: Define o status baseado no autoApprove
+      // Usa o valor de autoApprove salvo no banco
       const initialStatus = autoApprove ? 'approved' : 'pending';
 
-      // 🎯 Passa o status inicial para a função de serviço
       const id = await appointmentService.create({
         ...appointmentData,
-        status: initialStatus // Sobrescreve o status padrão, se a flag estiver ativa
+        status: initialStatus
       });
 
       await emailService.sendConfirmation({ ...appointmentData, id, status: initialStatus });
@@ -69,7 +95,6 @@ export const useAppointments = () => {
   };
 
   const updateAppointmentStatus = async (id, status) => {
-    // ... (restante da função updateAppointmentStatus)
     setLoading(true);
     setError(null);
     try {
@@ -92,7 +117,6 @@ export const useAppointments = () => {
   };
 
   const updateAppointment = async (id, updateData) => {
-    // ... (restante da função updateAppointment)
     setLoading(true);
     setError(null);
     try {
@@ -102,12 +126,11 @@ export const useAppointments = () => {
         const newTime = updateData.time || appointment.time;
         const professionalId = updateData.professionalId || appointment.professionalId;
 
-        // **Passa o professionalId para a verificação de conflito**
         const hasConflict = await appointmentService.checkTimeConflict(
           newDate,
           newTime,
           professionalId,
-          id // Exclui o próprio agendamento da verificação de conflito
+          id
         );
 
         if (hasConflict) {
@@ -140,6 +163,7 @@ export const useAppointments = () => {
     updateAppointmentStatus,
     updateAppointment,
     autoApprove,
-    toggleAutoApprove
+    toggleAutoApprove,
+    isLoadingSettings
   };
 };
